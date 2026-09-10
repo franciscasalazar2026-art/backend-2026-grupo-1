@@ -45,3 +45,5 @@ class Cita(CitaBase):
 
     class Config:
         from_attributes = True
+
+

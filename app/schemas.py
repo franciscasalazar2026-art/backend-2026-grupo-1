@@ -9,3 +9,11 @@ class ClienteBase(BaseModel):
     nombre: str
     email: EmailStr
     telefono: str
+
+class ClienteCreate(ClienteBase):
+    pass
+
+class ClienteUpdate(BaseModel):
+    nombre: Optional[str] = None
+    email: Optional[EmailStr] = None
+    telefono: Optional[str] = None

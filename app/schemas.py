@@ -40,3 +40,10 @@ class CitaUpdate(BaseModel):
     motivo: Optional[str] = None
     estado: Optional[EstadoCita] = None
 
+class Cita(CitaBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+

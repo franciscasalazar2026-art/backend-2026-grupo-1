@@ -31,3 +31,12 @@ class CitaBase(BaseModel):
     fecha_hora: datetime
     motivo: str
     estado: EstadoCita = EstadoCita.PENDIENTE
+
+class CitaCreate(CitaBase):
+    pass
+
+class CitaUpdate(BaseModel):
+    fecha_hora: Optional[datetime] = None
+    motivo: Optional[str] = None
+    estado: Optional[EstadoCita] = None
+

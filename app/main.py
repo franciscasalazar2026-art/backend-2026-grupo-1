@@ -3,12 +3,15 @@ from fastapi import FastAPI, HTTPException, Query, status
 from app.schemas import Cliente, ClienteCreate, ClienteUpdate, Cita, CitaCreate, CitaUpdate
 from app.models import EstadoCita
 from app.database import db_clientes, db_citas
+from app.routers import citas
 
 app = FastAPI(
     title="API REST - Sistema de Gestión de Citas",
     description="API para la gestión de clientes y agendamiento de citas.",
     version="1.0.0"
 )
+
+app.include_router(citas.router)
 
 # --- ENDPOINTS CLIENTES ---
 
@@ -60,22 +63,6 @@ def eliminar_cliente(cliente_id: int):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
 
 # --- ENDPOINTS CITAS ---
-
-@app.get("/citas", response_model=List[Cita], status_code=status.HTTP_200_OK, tags=["Citas"])
-def listar_citas(
-    estado: Optional[EstadoCita] = Query(None, description="Filtrar citas por estado"),
-    ordenar_fecha: Optional[str] = Query("asc", pattern="^(asc|desc)$", description="Orden por fecha: asc o desc"),
-    limit: int = Query(10, ge=1, le=100),
-    offset: int = Query(0, ge=0)
-):
-    resultado = db_citas
-    if estado:
-        resultado = [c for c in resultado if c.estado == estado]
-    
-    reverse = (ordenar_fecha == "desc")
-    resultado = sorted(resultado, key=lambda x: x.fecha_hora, reverse=reverse)
-    
-    return resultado[offset : offset + limit]
 
 @app.post("/citas", response_model=Cita, status_code=status.HTTP_201_CREATED, tags=["Citas"])
 def crear_cita(cita: CitaCreate):

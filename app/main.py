@@ -64,16 +64,6 @@ def eliminar_cliente(cliente_id: int):
 
 # --- ENDPOINTS CITAS ---
 
-@app.post("/citas", response_model=Cita, status_code=status.HTTP_201_CREATED, tags=["Citas"])
-def crear_cita(cita: CitaCreate):
-    if not any(c.id == cita.cliente_id for c in db_clientes):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El ID del cliente no existe")
-    
-    nuevo_id = max([c.id for c in db_citas], default=0) + 1
-    nueva_cita = Cita(id=nuevo_id, **cita.model_dump())
-    db_citas.append(nueva_cita)
-    return nueva_cita
-
 @app.get("/citas/{cita_id}", response_model=Cita, status_code=status.HTTP_200_OK, tags=["Citas"])
 def obtener_cita(cita_id: int):
     for c in db_citas:

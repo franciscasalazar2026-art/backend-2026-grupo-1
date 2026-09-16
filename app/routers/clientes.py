@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.schemas.schemas import Cliente, ClienteCreate, ClienteUpdate
 from app.repositories.database import db_clientes
 
+
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
 @router.get("", response_model=List[Cliente], status_code=status.HTTP_200_OK)

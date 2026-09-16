@@ -1,7 +1,5 @@
 from typing import List, Optional
-
 from fastapi import APIRouter, HTTPException, Query, status
-
 from app.schemas import Cita, CitaCreate
 from app.database import db_clientes, db_citas
 from app.models import EstadoCita
@@ -11,7 +9,6 @@ router = APIRouter(
     prefix="/citas",
     tags=["Citas"]
 )
-
 
 @router.get(
     "",
@@ -27,6 +24,17 @@ def listar_citas(
         None,
         pattern="^(asc|desc)$",
         description="Ordenar citas por fecha: asc o desc"
+    ),
+    limit: int = Query(
+        10,
+        ge=1,
+        le=100,
+        description="Cantidad máxima de citas a mostrar"
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Cantidad de citas a saltar"
     )
 ):
     resultado = db_citas
@@ -37,7 +45,13 @@ def listar_citas(
     if ordenar_fecha == "asc":
         resultado = sorted(resultado, key=lambda c: c.fecha_hora)
     elif ordenar_fecha == "desc":
-        resultado = sorted(resultado, key=lambda c: c.fecha_hora, reverse=True)
+        resultado = sorted(
+            resultado,
+            key=lambda c: c.fecha_hora,
+            reverse=True
+        )
+
+    resultado = resultado[offset:offset + limit]
 
     return resultado
 

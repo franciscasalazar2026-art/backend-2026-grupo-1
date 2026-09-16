@@ -1,5 +1,7 @@
 from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException, Query, status
+
 from app.schemas import Cita, CitaCreate
 from app.database import db_clientes, db_citas
 from app.models import EstadoCita
@@ -20,12 +22,22 @@ def listar_citas(
     estado: Optional[EstadoCita] = Query(
         None,
         description="Filtrar citas por estado"
+    ),
+    ordenar_fecha: Optional[str] = Query(
+        None,
+        pattern="^(asc|desc)$",
+        description="Ordenar citas por fecha: asc o desc"
     )
 ):
     resultado = db_citas
 
     if estado:
         resultado = [c for c in resultado if c.estado == estado]
+
+    if ordenar_fecha == "asc":
+        resultado = sorted(resultado, key=lambda c: c.fecha_hora)
+    elif ordenar_fecha == "desc":
+        resultado = sorted(resultado, key=lambda c: c.fecha_hora, reverse=True)
 
     return resultado
 

@@ -1,3 +1,4 @@
+ feature/endpoints-citas
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Query, status
 from app.schemas import Cliente, ClienteCreate, ClienteUpdate, Cita, CitaCreate, CitaUpdate
@@ -5,12 +6,17 @@ from app.models import EstadoCita
 from app.database import db_clientes, db_citas
 from app.routers import citas
 
+from fastapi import FastAPI
+from app.routers import clientes, citas
+ main
+
 app = FastAPI(
     title="API REST - Sistema de Gestión de Citas",
-    description="API para la gestión de clientes y agendamiento de citas.",
+    description="API Backend para la gestión de clientes y citas.",
     version="1.0.0"
 )
 
+ feature/endpoints-citas
 app.include_router(citas.router)
 
 # --- ENDPOINTS CLIENTES ---
@@ -92,3 +98,8 @@ def eliminar_cita(cita_id: int):
             db_citas.pop(idx)
             return
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cita no encontrada")
+
+# Conecta las rutas de cada módulo
+app.include_router(clientes.router)
+app.include_router(citas.router)
+ main

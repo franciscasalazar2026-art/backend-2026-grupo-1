@@ -58,22 +58,25 @@ class PaginatedResponse(BaseModel, Generic[T]):
     limite: int
     total_paginas: int
 
-
 # --- SERVICIOS ---
-class ServicioCreate(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=100)
-    descripcion: Optional[str] = None
-    duracion_minutos: int = Field(..., gt=0)
-    precio: Decimal = Field(..., ge=0)
+class ServicioBase(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=100, description="Nombre del servicio (ej. Manicure, Peluquería)")
+    descripcion: Optional[str] = Field(None, max_length=255)
+    duracion_minutos: int = Field(..., gt=0, description="La duración debe ser mayor a 0 minutos")
+    precio: Decimal = Field(..., ge=0, description="El precio no puede ser negativo")
+
+class ServicioCreate(ServicioBase):
     activo: bool = True
 
+class ServicioUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=2, max_length=100)
+    descripcion: Optional[str] = Field(None, max_length=255)
+    duracion_minutos: Optional[int] = Field(None, gt=0)
+    precio: Optional[Decimal] = Field(None, ge=0)
+    activo: Optional[bool] = None
 
-class ServicioResponse(BaseModel):
+class ServicioResponse(ServicioBase):
     id: int
-    nombre: str
-    descripcion: Optional[str] = None
-    duracion_minutos: int
-    precio: Decimal
     activo: bool
 
     class Config:

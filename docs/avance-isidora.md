@@ -1,8 +1,8 @@
-# Avance de Isidora — documentación y verificación
+# Avance de Isidora — pruebas, seeder y documentación
 
 **Fecha de revisión:** 28-10-2026  
 **Base revisada:** rama `main`, commit `1a1864a`  
-**Alcance:** diagrama, comprobación de supuestos, README, solicitudes para clientes, matriz de pruebas y estado del entorno.
+**Alcance:** diagrama, suite de pruebas aislada, seeder repetible, README y matriz con resultados reales.
 
 ## Problema y supuestos por validar
 
@@ -22,11 +22,15 @@ El plan propone la hipótesis de que un negocio agenda manualmente y mantiene se
 | Diagrama relacional del código actual | Preparado | El esquema físico incluye `reservas` y `profesional_servicios`; no se confunde con el modelo conceptual. |
 | P1–P3 revisados con el negocio | Pendiente | No marcar como validado hasta tener confirmación del grupo/negocio. |
 | README coherente con los archivos de `main` | Preparado en esta rama | Se retiraron los marcadores de conflicto y se documentó el estado sin afirmar persistencia probada. |
-| Solicitudes POST/GET de clientes | Preparadas | [`isidora-clientes.postman_collection.json`](../postman/isidora-clientes.postman_collection.json); ejecución bloqueada por configuración local ausente. |
+| Pruebas de clientes y servicios integrados | Aprobadas en SQLite temporal | `tests/test_clientes.py` y `tests/test_servicios.py`; ver resultados en [`pruebas.md`](../pruebas.md). |
+| Pruebas de citas y rollback de reserva/cita | Aprobadas en SQLite temporal | `tests/test_citas.py`; el rollback queda verificado con error inyectado. |
+| Asociación profesional-servicio | Restricción ORM probada | `tests/test_profesionales.py`; el CRUD HTTP sigue pendiente porque no existe router en `main`. |
+| Seeder reproducible | Aprobado en SQLite temporal | `scripts/seed.py` conserva dos registros conectados por entidad al ejecutarse dos veces. |
+| Rutas de servicios no integradas y CRUD profesional | Preparadas y omitidas | La suite deja casos skip hasta integrar los routers; no se cuentan como aprobados. |
 | `.env.example` sin secretos | Preparado como plantilla | Variables derivadas de `app/infrastructure/database.py`; los valores siguen vacíos hasta confirmar Compose/credenciales. |
 | Docker Compose / PostgreSQL integrado | Pendiente | No hay `compose.yml`/`compose.yaml` en `main`; no se levantaron contenedores. |
 | OpenAPI generado con FastAPI `TestClient` | Verificado localmente | `GET /openapi.json` respondió `200` y publicó los routers esperados; se usaron variables temporales de importación, sin conectar a PostgreSQL. |
-| API y Swagger ejecutados contra PostgreSQL | Pendiente | La aplicación requiere las cinco variables DB y un servidor alcanzable. No declarar resultado sin ejecutarlo. |
+| API y Swagger ejecutados contra PostgreSQL | Pendiente | Las pruebas actuales usan SQLite. La aplicación requiere las cinco variables DB y un servidor alcanzable. |
 | Migración Alembic aplicada | Pendiente de verificación | Hay una migración versionada; no se confirmó `alembic upgrade head` en una base real. |
 | Persistencia tras reinicio | Pendiente de prueba | Requiere crear un cliente, reiniciar API y consultar el mismo ID con PostgreSQL configurado. |
 

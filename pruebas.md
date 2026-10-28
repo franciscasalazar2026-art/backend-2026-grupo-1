@@ -1,49 +1,49 @@
-# Plan y evidencia de pruebas
+# Pruebas automatizadas del backend
 
-Este documento diferencia las solicitudes preparadas de las pruebas que efectivamente se ejecutaron. La colección Postman está en [`postman/isidora-clientes.postman_collection.json`](postman/isidora-clientes.postman_collection.json).
+## Ejecución reproducible
 
-## Estado del entorno al 28-10-2026
+Las pruebas usan una base SQLite temporal en memoria, crean todas las tablas ORM y activan las claves foráneas. No leen credenciales locales, no necesitan PostgreSQL y eliminan la base al cerrar cada caso.
 
-La revisión de `main` encontró que `app/infrastructure/database.py` exige `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`. El repositorio no contiene un `.env` ni `compose.yml`/`compose.yaml`; la plantilla `.env.example` de esta rama deja los valores vacíos. Por ello **no se han ejecutado solicitudes HTTP contra PostgreSQL** y los resultados siguientes no se inventan.
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
 
-## Verificaciones ejecutadas en esta rama
+Los datos de prueba se crean desde fixtures por caso. El seeder reutilizable para un PostgreSQL de desarrollo se ejecuta después de `alembic upgrade head` con `python scripts/seed.py`.
 
-| Verificación | Resultado observado | Alcance |
-|---|---|---|
-| Compilación de `app/` y `migrations/` con Python 3.13 | Correcta, sin errores de sintaxis. | No valida conexión ni comportamiento de la base de datos. |
-| Lectura JSON de la colección Postman | Correcta. | Valida estructura JSON; no ejecuta las solicitudes. |
-| FastAPI `TestClient` — `GET /openapi.json` | `200`; OpenAPI contiene `/clientes`, `/citas` y `/servicios` (5 rutas en total). | Se usaron valores temporales no secretos solo para importar la app; no se conectó a PostgreSQL ni se probaron operaciones CRUD. |
-| `git diff --check` | Sin errores de espacios en blanco. | Git informó solo conversión normal de fin de línea LF/CRLF en Windows. |
+## Casos ejecutados
 
-## Casos preparados
+Última ejecución local: Python 3.13, `python -m pytest -q` — **15 aprobados, 6 omitidos**. Los omitidos corresponden a rutas/reglas aún ausentes de `main`; se explicitan en las pruebas y se deben habilitar cuando los respectivos PR estén integrados.
 
-| ID | Solicitud / entrada | Resultado esperado por el código | Resultado obtenido | Estado |
-|---|---|---|---|---|
-| C01 | `POST /clientes` con nombre, email y teléfono válidos | `201`, respuesta de cliente con `id` | No ejecutado: falta configuración DB local y servicio PostgreSQL confirmado. | Bloqueado |
-| C02 | `GET /clientes?limit=1&offset=0` | `200`, objeto paginado con `items`, `total`, `pagina`, `limite` y `total_paginas` | No ejecutado: mismo bloqueo de conexión. | Bloqueado |
-| C03 | Repetir `POST /clientes` usando el correo de C01 | `409`, correo duplicado | No ejecutado: requiere que C01 se registre en DB. | Bloqueado |
-| C04 | `POST /clientes` con email inválido | `422`, error de validación Pydantic | No ejecutado: la API no se pudo levantar sin DB. | Bloqueado |
-| C05 | `GET /clientes/999999999` (ID inexistente) | `404`, cliente no encontrado | No ejecutado: la API no se pudo levantar sin DB. | Bloqueado |
-| C06 | `POST /citas` con `cliente_id` inexistente y servicio/profesional de prueba | `400`, cliente inexistente | No ejecutado: la API no se pudo levantar sin DB. | Bloqueado |
-| C07 | `GET /citas?estado=pendiente&ordenar_por=fecha_hora&direccion=asc&pagina=1&limite=10` | `200`, respuesta paginada y ordenada | No ejecutado: requiere DB. | Bloqueado |
-| C08 | Crear cliente, reiniciar API y consultar `GET /clientes/{id}` | `200` y el mismo registro si persiste en PostgreSQL | No ejecutado: requiere conexión DB configurada y disponible. | Pendiente de integración |
+| ID | Área | Entrada y comprobación | Resultado observado | Estado |
+| --- | --- | --- | --- | --- |
+| CLI-01 | Clientes | Crear cliente y consultarlo por ID | `POST 201`, `GET 200`, email conservado | Aprobado |
+| CLI-02 | Clientes | Repetir correo | `409` | Aprobado |
+| CLI-03 | Clientes | Correo inválido | `422` | Aprobado |
+| CLI-04 | Clientes | ID inexistente | `404` | Aprobado |
+| CLI-05 | Clientes | Listar con límite y desplazamiento | `200`, 3 totales y 2 elementos de página | Aprobado |
+| SER-01 | Servicios | Crear y listar | `POST 201`, `GET 200` | Aprobado |
+| SER-02 | Servicios | Precio negativo o duración cero | `422` en ambos casos | Aprobado |
+| SER-03 | Servicios | Consultar ID inexistente | Preparado; la ruta `GET /servicios/{servicio_id}` no está en `main` | Omitido |
+| SER-04 | Servicios | Actualizar y consultar ID inexistente | Preparado; `PUT /servicios/{servicio_id}` no está en `main` | Omitido |
+| SER-05 | Servicios | Eliminar e ID inexistente | Preparado; `DELETE /servicios/{servicio_id}` no está en `main` | Omitido |
+| PRO-01 | Profesionales | Repetir asociación profesional-servicio | Restricción única rechaza el duplicado | Aprobado |
+| PRO-02 | Profesionales | CRUD y asignación por HTTP | Preparado; el router `/profesionales` no está en `main` | Omitido |
+| CIT-01 | Citas | Crear cita con cliente, profesional, servicio y relación existente | `201`; se guardan una reserva y una cita | Aprobado |
+| CIT-02 | Citas | Fecha con formato inválido | `422` | Aprobado |
+| CIT-03 | Citas | ID inexistente | `404` | Aprobado |
+| CIT-04 | Citas | Filtrar estado, ordenar y paginar | `200`, metadatos y elemento esperado | Aprobado |
+| CIT-05 | Agenda | Fecha pasada | Preparado; rechazo aún no implementado en `main` | Omitido |
+| CIT-06 | Agenda | Dos citas superpuestas para la profesional | Preparado; regla de traslape aún no implementada en `main` | Omitido |
+| CIT-07 | Transacción | Simular fallo al insertar la cita después de crear reserva | `409`; rollback deja 0 reservas y 0 citas | Aprobado |
+| SEE-01 | Seeder | Ejecutarlo dos veces sobre base vacía | Mantiene 2 clientes, servicios, profesionales, asociaciones, reservas y citas | Aprobado |
 
-## Comprobación estática del código
+## Alcance y pendientes
 
-Estos puntos se observaron en los archivos de `main`; no son una prueba de ejecución:
-
-- `GET /clientes` calcula `total` antes de aplicar `offset` y `limit` y devuelve metadatos de paginación.
-- `POST /clientes` confirma la escritura con `db.commit()` y hace `db.rollback()` ante `IntegrityError`.
-- `POST /citas` crea `ReservaORM` y `CitaORM` dentro de la misma transacción; usa `flush()`, `commit()` y `rollback()` ante conflicto de integridad.
-- `GET /citas` ofrece filtro por estado, orden, dirección, página y límite.
-- Hay modelos ORM y una migración inicial en el repositorio; todavía no se verificó la migración en una base de datos.
-
-## Cómo ejecutar cuando PostgreSQL esté configurado
-
-1. Completar `.env` con los valores confirmados por el equipo (no compartirlos ni subirlos a Git).
-2. Iniciar PostgreSQL usando el procedimiento acordado; `compose.yml` aún no está en la rama `main` revisada.
-3. Ejecutar `alembic upgrade head` y luego `uvicorn app.main:app --reload`.
-4. Importar la colección en Postman, seleccionar `POST /clientes` y luego ejecutar las solicitudes de la colección en orden.
-5. Registrar aquí fecha, entorno, código HTTP real y resultado observado. Si una prueba falla, conservar el error exacto y dejar el estado como fallido/bloqueado hasta corregirlo.
-
-Los criterios finales de filtros, reglas de traslape y persistencia siguen pendientes de ejecución; la hipótesis de negocio también debe validarse antes de presentar resultados como hechos.
+- Las pruebas ejercitan las rutas integradas en la rama actual y las relaciones con SQLite; no demuestran el comportamiento real de PostgreSQL.
+- Docker, la migración Alembic desde una base PostgreSQL vacía y la persistencia después de reiniciar el servidor todavía requieren una configuración PostgreSQL disponible.
+- Los casos omitidos están identificados con `pytest.mark.skip` y explican la ruta o regla faltante. No cuentan como aprobados.
+- La prueba de rollback inyecta un error de integridad durante la segunda escritura de `/citas` y comprueba que no quede una reserva huérfana.
+- El seeder usa correos `seed.*@example.test` y motivos con prefijo `[SEED]` para identificar sus datos; no elimina otros registros.

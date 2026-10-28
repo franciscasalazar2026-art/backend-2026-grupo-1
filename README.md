@@ -31,6 +31,7 @@ El detalle de las entidades y sus cardinalidades está en [`docs/diagrama-entida
 - Python 3.10 o superior.
 - PostgreSQL disponible y credenciales acordadas por el equipo.
 - Dependencias de [`requirements.txt`](requirements.txt).
+- Para pruebas automatizadas: dependencias de [`requirements-dev.txt`](requirements-dev.txt).
 
 ## Preparar el entorno local
 
@@ -46,7 +47,7 @@ El detalle de las entidades y sus cardinalidades está en [`docs/diagrama-entida
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 3. Copia `.env.example` a `.env` y completa los valores que el equipo confirme para PostgreSQL:
@@ -66,6 +67,10 @@ El detalle de las entidades y sus cardinalidades está en [`docs/diagrama-entida
 
    `alembic upgrade head` y `uvicorn` requieren una base de datos accesible. El comando de Docker queda pendiente hasta que se incorpore y valide el archivo Compose del equipo.
 
+5. En otra terminal, crea los datos de demostración con `python scripts/seed.py`. El seeder es repetible y conserva registros que no identifica como datos de demostración.
+
+6. Ejecuta las pruebas automatizadas con `python -m pytest -q`. Estas usan SQLite temporal y no necesitan la base PostgreSQL.
+
 ## Endpoints disponibles en el código
 
 Los routers actuales no usan el prefijo `/api`.
@@ -76,6 +81,8 @@ Los routers actuales no usan el prefijo `/api`.
 | `/servicios` | `GET`, `POST` |
 | `/citas` | `GET`, `POST`, `GET /{cita_id}`, `PUT /{cita_id}`, `DELETE /{cita_id}` |
 
+El router de profesionales y las operaciones `GET` por ID, `PUT` y `DELETE` de servicios todavía no aparecen en `main`. Los casos preparados para esas rutas se dejan omitidos hasta integrar los cambios correspondientes.
+
 La colección reproducible de solicitudes está en [`postman/isidora-clientes.postman_collection.json`](postman/isidora-clientes.postman_collection.json). La tabla de casos y los resultados observados están en [`pruebas.md`](pruebas.md).
 
 ## Problema y alcance por validar
@@ -84,7 +91,8 @@ La agenda manual, los actores afectados y las consecuencias descritas en la prop
 
 ## Estado resumido
 
-- **Preparado en esta rama:** documentación técnica, diagrama conceptual y físico, plantilla segura de variables, colección Postman y matriz de avance/pruebas.
+- **Preparado en esta rama:** documentación técnica, diagramas, plantilla de variables, seeder repetible y pruebas automatizadas.
 - **Presente en el código de `main`:** rutas de clientes, citas y servicios; modelos SQLAlchemy; migración inicial.
-- **Pendiente de evidencia:** conexión PostgreSQL, migración aplicada, Swagger en ejecución, persistencia tras reinicio y reglas de negocio ejecutadas.
+- **Pendiente de evidencia:** conexión PostgreSQL, migración aplicada desde cero, Swagger y persistencia tras reinicio.
+- **Pendiente de implementación/integración:** router de profesionales, operaciones restantes de servicios y reglas de agenda para fechas pasadas y traslapes.
 - **Pendiente de integración:** configuración Docker/Compose y confirmación de P1–P3.

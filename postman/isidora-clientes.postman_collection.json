@@ -1,0 +1,115 @@
+{
+  "info": {
+    "name": "Isidora - smoke tests de clientes y agenda",
+    "description": "Solicitudes preparadas para verificar clientes, validaciones, referencias y paginación. Requiere que FastAPI y PostgreSQL estén configurados. Los scripts registran respuestas reales al ejecutar la colección; no representan resultados ya obtenidos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000" },
+    { "key": "clienteId", "value": "" },
+    { "key": "testEmail", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "01 - Crear cliente válido (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('testEmail', `isidora.${Date.now()}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('incluye el id del cliente', () => pm.expect(body.id).to.exist);",
+                  "if (body.id) pm.collectionVariables.set('clienteId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cliente de prueba Isidora\",\n  \"email\": \"{{testEmail}}\",\n  \"telefono\": \"912345678\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "02 - Listar clientes, primera página (200)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('responde 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('incluye metadatos de paginación', () => { pm.expect(body).to.have.property('items'); pm.expect(body).to.have.property('total'); pm.expect(body).to.have.property('pagina'); pm.expect(body).to.have.property('limite'); pm.expect(body).to.have.property('total_paginas'); });",
+            "pm.test('respeta el límite solicitado', () => pm.expect(body.items.length).to.be.at.most(1));"
+          ] } }],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/clientes?limit=1&offset=0", "host": ["{{baseUrl}}"], "path": ["clientes"], "query": [{ "key": "limit", "value": "1" }, { "key": "offset", "value": "0" }] } }
+        },
+        {
+          "name": "03 - Rechazar correo duplicado (409)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('responde 409', () => pm.response.to.have.status(409));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Cliente duplicado\",\n  \"email\": \"{{testEmail}}\",\n  \"telefono\": \"987654321\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "04 - Validar email inválido (422)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('responde 422', () => pm.response.to.have.status(422));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Cliente inválido\",\n  \"email\": \"no-es-correo\",\n  \"telefono\": \"912345678\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/clientes", "host": ["{{baseUrl}}"], "path": ["clientes"] }
+          }
+        },
+        {
+          "name": "05 - Cliente inexistente (404)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('responde 404', () => pm.response.to.have.status(404));"] } }],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/clientes/999999999", "host": ["{{baseUrl}}"], "path": ["clientes", "999999999"] } }
+        }
+      ]
+    },
+    {
+      "name": "Citas",
+      "item": [
+        {
+          "name": "06 - Rechazar cita con cliente inexistente (400)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('responde 400', () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"cliente_id\": 999999999,\n  \"servicio_id\": 1,\n  \"profesional_id\": 1,\n  \"fecha_hora\": \"2030-01-15T10:00:00\",\n  \"motivo\": \"Prueba de referencia inexistente\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/citas", "host": ["{{baseUrl}}"], "path": ["citas"] }
+          }
+        },
+        {
+          "name": "07 - Listar citas con filtro, orden y paginación (200)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('responde 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('incluye items y total', () => { pm.expect(body).to.have.property('items'); pm.expect(body).to.have.property('total'); });",
+            "pm.test('respeta el límite', () => pm.expect(body.items.length).to.be.at.most(10));"
+          ] } }],
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/citas?estado=pendiente&ordenar_por=fecha_hora&direccion=asc&pagina=1&limite=10", "host": ["{{baseUrl}}"], "path": ["citas"], "query": [{ "key": "estado", "value": "pendiente" }, { "key": "ordenar_por", "value": "fecha_hora" }, { "key": "direccion", "value": "asc" }, { "key": "pagina", "value": "1" }, { "key": "limite", "value": "10" }] } }
+        }
+      ]
+    }
+  ]
+}

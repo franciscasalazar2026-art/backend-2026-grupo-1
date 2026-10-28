@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List, Optional, Generic, TypeVar
 from pydantic import BaseModel, EmailStr, Field
 from app.domain.models import EstadoCita
@@ -48,7 +49,7 @@ class Cita(BaseModel):
     class Config:
         from_attributes = True
 
-# --- PAGINACIÓN ---
+# --- PAGINACIÃ“N ---
 T = TypeVar('T')
 class PaginatedResponse(BaseModel, Generic[T]):
     items: List[T]
@@ -56,3 +57,24 @@ class PaginatedResponse(BaseModel, Generic[T]):
     pagina: int
     limite: int
     total_paginas: int
+
+
+# --- SERVICIOS ---
+class ServicioCreate(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=100)
+    descripcion: Optional[str] = None
+    duracion_minutos: int = Field(..., gt=0)
+    precio: Decimal = Field(..., ge=0)
+    activo: bool = True
+
+
+class ServicioResponse(BaseModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    duracion_minutos: int
+    precio: Decimal
+    activo: bool
+
+    class Config:
+        from_attributes = True

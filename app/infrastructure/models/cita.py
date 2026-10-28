@@ -1,13 +1,6 @@
+﻿from datetime import datetime
 
-from datetime import datetime
-
-from sqlalchemy import (
-    DateTime,
-    Enum as SQLAlchemyEnum,
-    ForeignKey,
-    Integer,
-    String,
-)
+from sqlalchemy import DateTime, Enum as SQLAlchemyEnum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.domain.models import EstadoCita
@@ -18,26 +11,13 @@ class CitaORM(Base):
     __tablename__ = "citas"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
+        Integer, primary_key=True, index=True
     )
 
-    cliente_id: Mapped[int] = mapped_column(
-        ForeignKey("clientes.id"),
+    reserva_id: Mapped[int] = mapped_column(
+        ForeignKey("reservas.id"),
         nullable=False,
-        index=True,
-    )
-
-    servicio_id: Mapped[int] = mapped_column(
-        ForeignKey("servicios.id"),
-        nullable=False,
-        index=True,
-    )
-
-    profesional_id: Mapped[int] = mapped_column(
-        ForeignKey("profesionales.id"),
-        nullable=False,
+        unique=True,
         index=True,
     )
 
@@ -48,8 +28,7 @@ class CitaORM(Base):
     )
 
     motivo: Mapped[str] = mapped_column(
-        String(200),
-        nullable=False,
+        String(200), nullable=False
     )
 
     estado: Mapped[EstadoCita] = mapped_column(
@@ -65,17 +44,7 @@ class CitaORM(Base):
         default=EstadoCita.PENDIENTE,
     )
 
-    cliente: Mapped["ClienteORM"] = relationship(
-        "ClienteORM",
-        back_populates="citas",
-    )
-
-    servicio: Mapped["ServicioORM"] = relationship(
-        "ServicioORM",
-        back_populates="citas",
-    )
-
-    profesional: Mapped["ProfesionalORM"] = relationship(
-        "ProfesionalORM",
-        back_populates="citas",
+    reserva: Mapped["ReservaORM"] = relationship(
+        "ReservaORM",
+        back_populates="cita",
     )

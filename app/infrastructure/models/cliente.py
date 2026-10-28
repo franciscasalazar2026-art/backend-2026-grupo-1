@@ -1,5 +1,4 @@
-
-from sqlalchemy import Boolean, Integer, String
+﻿from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -28,7 +27,7 @@ class ClienteORM(Base):
         Boolean, nullable=False, default=True
     )
 
-    citas: Mapped[list["CitaORM"]] = relationship(
-        "CitaORM",
-        back_populates="cliente"
+    reservas: Mapped[list["ReservaORM"]] = relationship(
+        "ReservaORM",
+        back_populates="cliente",
     )

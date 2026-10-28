@@ -1,5 +1,4 @@
-
-from sqlalchemy import Boolean, Integer, String
+﻿from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -32,7 +31,7 @@ class ProfesionalORM(Base):
         Boolean, nullable=False, default=True
     )
 
-    citas: Mapped[list["CitaORM"]] = relationship(
-        "CitaORM",
-        back_populates="profesional"
+    profesional_servicios: Mapped[list["ProfesionalServicioORM"]] = relationship(
+        "ProfesionalServicioORM",
+        back_populates="profesional",
     )

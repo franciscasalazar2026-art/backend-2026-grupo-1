@@ -1,7 +1,6 @@
+﻿from decimal import Decimal
 
-from decimal import Decimal
-
-from sqlalchemy import Boolean, Integer, Numeric, String, Text, CheckConstraint
+from sqlalchemy import Boolean, CheckConstraint, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -13,11 +12,11 @@ class ServicioORM(Base):
     __table_args__ = (
         CheckConstraint(
             "duracion_minutos > 0",
-            name="ck_servicios_duracion_positiva"
+            name="ck_servicios_duracion_positiva",
         ),
         CheckConstraint(
             "precio >= 0",
-            name="ck_servicios_precio_no_negativo"
+            name="ck_servicios_precio_no_negativo",
         ),
     )
 
@@ -45,7 +44,7 @@ class ServicioORM(Base):
         Boolean, nullable=False, default=True
     )
 
-    citas: Mapped[list["CitaORM"]] = relationship(
-        "CitaORM",
-        back_populates="servicio"
+    profesional_servicios: Mapped[list["ProfesionalServicioORM"]] = relationship(
+        "ProfesionalServicioORM",
+        back_populates="servicio",
     )

@@ -1,58 +1,90 @@
-<<<<<<< HEAD
-# API REST - Sistema de Gestión de Citas y Servicios
+# Backend 2026 — Gestión de citas y servicios
 
-API Backend desarrollada con FastAPI para la gestión de clientes, agendamiento de citas, servicios y profesionales.
+API REST para gestionar clientes, citas y servicios de un centro atendido por profesionales. El repositorio está en transición desde una API inicial hacia persistencia en PostgreSQL con SQLAlchemy y migraciones Alembic.
 
----
+> **Estado del avance:** el código de `main` contiene routers, modelos ORM y una migración inicial. La ejecución integrada depende de configurar PostgreSQL. En esta rama no hay `compose.yml` ni `.env` real; `.env.example` es solo una plantilla. No se debe afirmar que la conexión o la persistencia están probadas hasta ejecutar las verificaciones descritas en [`pruebas.md`](pruebas.md).
 
-## Integrantes y Responsabilidades
+## Integrantes y áreas
 
-| Estudiante | Área de Responsabilidad | Responsabilidad Principal |
-| Francisca Alvarado|
-| Camila Fuentes|
-| Emily Jara|
-|Francisca Salazar|
-|Isidora Valverde|
----
+| Integrante | Área de trabajo |
+|---|---|
+| Francisca Alvarado | Citas, profesionales y reglas de negocio |
+| Camila Fuentes | Modelos ORM y relaciones |
+| Emily Jara | CRUD de clientes y servicios |
+| Francisca Salazar | Integración, configuración y Docker |
+| Isidora Valverde | Diagrama, pruebas y documentación |
 
-## Requisitos de Instalación y Ejecución
+## Arquitectura actual
 
-### 1. Clonar el repositorio
-```bash
-git clone [https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git](https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git)
-cd backend-2026-grupo-1
-=======
-# API REST - Sistema de Gestión de Citas
+- `app/main.py` registra los routers de clientes, citas y servicios.
+- `app/routers/` expone los endpoints y utiliza SQLAlchemy para leer y escribir.
+- `app/infrastructure/database.py` lee `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`, crea el engine y entrega una sesión por solicitud.
+- `app/infrastructure/models/` contiene las tablas ORM.
+- `app/domain/models.py` define el estado de una cita.
+- `app/schemas/` contiene los DTO y esquemas de respuesta Pydantic.
+- `migrations/` y `alembic.ini` contienen la configuración y la migración versionada.
 
-## Integrantes
-* Francisca Alvarado
-* Camila Fuentes
-* Emily Jara 
-* Francisca Salazar
-* Isidora Valverde
-## Requisitos e Instalación
+El detalle de las entidades y sus cardinalidades está en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md). La estructura observada no contiene todavía un `compose.yml`; la matriz de avance distingue lo implementado de lo que falta integrar.
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone [https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git](https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git)
+## Requisitos
+
+- Python 3.10 o superior.
+- PostgreSQL disponible y credenciales acordadas por el equipo.
+- Dependencias de [`requirements.txt`](requirements.txt).
+
+## Preparar el entorno local
+
+1. Clona el repositorio y entra en la carpeta:
+
+   ```powershell
+   git clone https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git
    cd backend-2026-grupo-1
-## Contrato de Endpoints REST
+   ```
 
-### Clientes
-| Método | Endpoint | Descripción | Código Éxito |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/clientes` | Lista clientes con paginación | `200 OK` |
-| `POST` | `/clientes` | Registra un nuevo cliente | `201 Created` |
-| `GET` | `/clientes/{id}` | Obtiene detalle de un cliente | `200 OK` |
-| `PUT` | `/clientes/{id}` | Actualiza datos de un cliente | `200 OK` |
-| `DELETE` | `/clientes/{id}` | Elimina un cliente | `204 No Content` |
+2. Crea y activa un entorno virtual, e instala las dependencias:
 
-### Citas
-| Método | Endpoint | Descripción | Código Éxito |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/citas` | Lista citas con filtros | `200 OK` |
-| `POST` | `/citas` | Agenda una nueva cita | `201 Created` |
-| `GET` | `/citas/{id}` | Obtiene detalle de una cita | `200 OK` |
-| `PUT` | `/citas/{id}` | Actualiza estado/fecha de cita | `200 OK` |
-| `DELETE` | `/citas/{id}` | Cancela/Elimina una cita | `204 No Content` |
->>>>>>> main
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+
+3. Copia `.env.example` a `.env` y completa los valores que el equipo confirme para PostgreSQL:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   No subas `.env` ni contraseñas a GitHub. La plantilla deja las variables vacías intencionalmente porque no hay un `compose.yml` en `main` que confirme el nombre de la base, usuario o contraseña.
+
+4. Con PostgreSQL en ejecución y `.env` completo, aplica la migración y levanta la API:
+
+   ```powershell
+   alembic upgrade head
+   uvicorn app.main:app --reload
+   ```
+
+   `alembic upgrade head` y `uvicorn` requieren una base de datos accesible. El comando de Docker queda pendiente hasta que se incorpore y valide el archivo Compose del equipo.
+
+## Endpoints disponibles en el código
+
+Los routers actuales no usan el prefijo `/api`.
+
+| Recurso | Operaciones |
+|---|---|
+| `/clientes` | `GET`, `POST`, `GET /{cliente_id}`, `PUT /{cliente_id}`, `DELETE /{cliente_id}` |
+| `/servicios` | `GET`, `POST` |
+| `/citas` | `GET`, `POST`, `GET /{cita_id}`, `PUT /{cita_id}`, `DELETE /{cita_id}` |
+
+La colección reproducible de solicitudes está en [`postman/isidora-clientes.postman_collection.json`](postman/isidora-clientes.postman_collection.json). La tabla de casos y los resultados observados están en [`pruebas.md`](pruebas.md).
+
+## Problema y alcance por validar
+
+La agenda manual, los actores afectados y las consecuencias descritas en la propuesta son **hipótesis de trabajo**, no hechos confirmados con el negocio. En [`docs/avance-isidora.md`](docs/avance-isidora.md) quedan marcados P1–P3 como pendientes de validación. El sistema no debe presentarse como solución de una situación real hasta confirmar esos puntos con el grupo y el negocio.
+
+## Estado resumido
+
+- **Preparado en esta rama:** documentación técnica, diagrama conceptual y físico, plantilla segura de variables, colección Postman y matriz de avance/pruebas.
+- **Presente en el código de `main`:** rutas de clientes, citas y servicios; modelos SQLAlchemy; migración inicial.
+- **Pendiente de evidencia:** conexión PostgreSQL, migración aplicada, Swagger en ejecución, persistencia tras reinicio y reglas de negocio ejecutadas.
+- **Pendiente de integración:** configuración Docker/Compose y confirmación de P1–P3.

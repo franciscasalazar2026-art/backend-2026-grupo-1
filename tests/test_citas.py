@@ -1,0 +1,104 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from sqlalchemy import event, func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.infrastructure.models import CitaORM, ReservaORM
+
+
+def cita_payload(agenda_ids, **overrides):
+    payload = {
+        "cliente_id": agenda_ids["cliente_id"],
+        "servicio_id": agenda_ids["servicio_id"],
+        "profesional_id": agenda_ids["profesional_id"],
+        "fecha_hora": (datetime.now(timezone.utc) + timedelta(days=3)).isoformat(),
+        "motivo": "Prueba de agenda",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_create_cita_creates_reserva_and_cita(client, agenda_ids, db_session):
+    response = client.post("/citas", json=cita_payload(agenda_ids))
+
+    assert response.status_code == 201
+    assert response.json()["cliente_id"] == agenda_ids["cliente_id"]
+    assert db_session.scalar(select(func.count(ReservaORM.id))) == 1
+    assert db_session.scalar(select(func.count(CitaORM.id))) == 1
+
+
+def test_invalid_cita_date_returns_422(client, agenda_ids):
+    response = client.post(
+        "/citas",
+        json=cita_payload(agenda_ids, fecha_hora="not-a-date"),
+    )
+
+    assert response.status_code == 422
+
+
+def test_missing_cita_returns_404(client):
+    assert client.get("/citas/999999").status_code == 404
+
+
+def test_list_citas_filters_orders_and_paginates(client, agenda_ids):
+    for day in (2, 5):
+        response = client.post(
+            "/citas",
+            json=cita_payload(
+                agenda_ids,
+                fecha_hora=(datetime.now(timezone.utc) + timedelta(days=day)).isoformat(),
+            ),
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/citas?estado=pendiente&ordenar_por=fecha_hora&direccion=desc&pagina=1&limite=1"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 2
+    assert len(response.json()["items"]) == 1
+    assert response.json()["pagina"] == 1
+
+
+@pytest.mark.skip(reason="El rechazo de citas en el pasado aún no está integrado en main")
+def test_past_cita_is_rejected(client, agenda_ids):
+    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+
+    assert client.post(
+        "/citas", json=cita_payload(agenda_ids, fecha_hora=past)
+    ).status_code == 422
+
+
+def test_failure_after_reservation_flush_rolls_back_both_records(
+    client, agenda_ids, db_session
+):
+    def fail_on_cita_flush(
+        session: Session, _flush_context: object, _instances: object
+    ) -> None:
+        if any(isinstance(item, CitaORM) for item in session.new):
+            raise IntegrityError("simulated cita failure", {}, RuntimeError())
+
+    event.listen(Session, "before_flush", fail_on_cita_flush)
+    try:
+        response = client.post("/citas", json=cita_payload(agenda_ids))
+    finally:
+        event.remove(Session, "before_flush", fail_on_cita_flush)
+
+    assert response.status_code == 409
+    assert db_session.scalar(select(func.count(ReservaORM.id))) == 0
+    assert db_session.scalar(select(func.count(CitaORM.id))) == 0
+
+
+@pytest.mark.skip(reason="La regla de traslape aún no está integrada en main")
+def test_overlapping_cita_for_same_professional_returns_conflict(
+    client, agenda_ids
+):
+    start = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+    first = client.post("/citas", json=cita_payload(agenda_ids, fecha_hora=start))
+    second = client.post("/citas", json=cita_payload(agenda_ids, fecha_hora=start))
+
+    assert first.status_code == 201
+    assert second.status_code == 409

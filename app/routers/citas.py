@@ -128,6 +128,34 @@ def actualizar_cita(cita_id: int, cita_data: CitaUpdate):
         if cita.id == cita_id:
             datos = cita.model_dump()
             actualizacion = cita_data.model_dump(exclude_unset=True)
+            if "estado" in actualizacion and actualizacion["estado"] is not None:
+                estado_actual = cita.estado
+                estado_nuevo = actualizacion["estado"]
+
+                transiciones_permitidas = {
+                    EstadoCita.PENDIENTE: {
+                        EstadoCita.CONFIRMADA,
+                        EstadoCita.CANCELADA,
+                    },
+                    EstadoCita.CONFIRMADA: {
+                        EstadoCita.CANCELADA,
+                        EstadoCita.COMPLETADA,
+                    },
+                    EstadoCita.CANCELADA: set(),
+                    EstadoCita.COMPLETADA: set(),
+                }
+
+            if (
+                estado_nuevo != estado_actual
+                and estado_nuevo not in transiciones_permitidas[estado_actual]
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"No se permite cambiar el estado de "
+                        f"'{estado_actual.value}' a '{estado_nuevo.value}'"
+                    ),
+                )
 
             if "fecha_hora" in actualizacion and actualizacion["fecha_hora"] is not None:
                 try:

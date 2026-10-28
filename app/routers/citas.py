@@ -30,13 +30,27 @@ def listar_citas(
     if estado:
         resultado = [c for c in resultado if c.estado == estado]
 
-    reverse = direccion == "desc"
-    if hasattr(Cita, ordenar_por):
-        resultado = sorted(
-            resultado,
-            key=lambda cita: getattr(cita, ordenar_por),
-            reverse=reverse
+    campos_ordenables = {
+        "id",
+        "fecha_hora",
+        "cliente_id",
+        "servicio_id",
+        "profesional_id",
+        "estado"
+    }
+
+    if ordenar_por not in campos_ordenables:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No se puede ordenar por el campo '{ordenar_por}'"
         )
+
+    reverse = direccion == "desc"
+    resultado = sorted(
+        resultado,
+        key=lambda cita: getattr(cita, ordenar_por),
+        reverse=reverse
+    )
 
     total = len(resultado)
     total_paginas = math.ceil(total / limite) if total > 0 else 1
@@ -114,6 +128,23 @@ def actualizar_cita(cita_id: int, cita_data: CitaUpdate):
         if cita.id == cita_id:
             datos = cita.model_dump()
             actualizacion = cita_data.model_dump(exclude_unset=True)
+
+            if "fecha_hora" in actualizacion and actualizacion["fecha_hora"] is not None:
+                try:
+                    fecha_hora = datetime.fromisoformat(actualizacion["fecha_hora"])
+                except ValueError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="La fecha y hora deben tener formato ISO 8601"
+                    ) from exc
+
+                ahora = datetime.now(fecha_hora.tzinfo)
+                if fecha_hora <= ahora:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No se puede agendar una cita en el pasado"
+                    )
+
             datos.update(actualizacion)
 
             cita_modificada = Cita(**datos)

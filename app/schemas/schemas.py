@@ -78,3 +78,10 @@ class ServicioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class ServicioUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=2, max_length=100)
+    descripcion: Optional[str] = None
+    duracion_minutos: Optional[int] = Field(None, gt=0)
+    precio: Optional[Decimal] = Field(None, ge=0)
+    activo: Optional[bool] = None

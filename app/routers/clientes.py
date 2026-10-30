@@ -1,92 +1,96 @@
-from typing import List
-from fastapi import APIRouter, status, Query
-from fastapi.responses import JSONResponse
-from app.schemas.schemas import Cliente, ClienteCreate, ClienteUpdate
-from app.repositories.database import db_clientes
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
+from app.infrastructure.database import get_db
+from app.infrastructure.models import ClienteORM
+from app.schemas.schemas import Cliente, ClienteCreate, ClienteUpdate, PaginatedResponse
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
-@router.get("", response_model=List[Cliente], status_code=status.HTTP_200_OK)
+
+@router.get("", response_model=PaginatedResponse[Cliente])
 def listar_clientes(
     limit: int = Query(10, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
 ):
-    return db_clientes[offset : offset + limit]
+    consulta = db.query(ClienteORM)
+    total = consulta.count()
+    clientes = consulta.order_by(ClienteORM.id).offset(offset).limit(limit).all()
+
+    return {
+        "items": clientes,
+        "total": total,
+        "pagina": offset // limit + 1,
+        "limite": limit,
+        "total_paginas": (total + limit - 1) // limit if total else 1,
+    }
+
 
 @router.post("", response_model=Cliente, status_code=status.HTTP_201_CREATED)
-def crear_cliente(cliente: ClienteCreate):
-    for c in db_clientes:
-        if c.email == cliente.email:
-            return JSONResponse(
-                status_code=status.HTTP_409_CONFLICT,
-                content={
-                    "error": {
-                        "code": "EMAIL_ALREADY_EXISTS",
-                        "message": "El correo ya esta registrado",
-                        "details": []
-                    }
-                }
-            )
-            
-    nuevo_id = max([c.id for c in db_clientes], default=0) + 1
-    nuevo_cliente = Cliente(id=nuevo_id, activo=True, **cliente.model_dump())
-    db_clientes.append(nuevo_cliente)
-    return nuevo_cliente
+def crear_cliente(datos: ClienteCreate, db: Session = Depends(get_db)):
+    cliente = ClienteORM(**datos.model_dump())
+    db.add(cliente)
 
-@router.get("/{cliente_id}", response_model=Cliente, status_code=status.HTTP_200_OK)
-def obtener_cliente(cliente_id: int):
-    for c in db_clientes:
-        if c.id == cliente_id:
-            return c
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": {
-                "code": "RESOURCE_NOT_FOUND",
-                "message": f"No existe un cliente con el ID {cliente_id}",
-                "details": []
-            }
-        }
-    )
+    try:
+        db.commit()
+        db.refresh(cliente)
+        return cliente
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="El correo ya está registrado.")
 
-@router.put("/{cliente_id}", response_model=Cliente, status_code=status.HTTP_200_OK)
-def actualizar_cliente(cliente_id: int, cliente_data: ClienteUpdate):
-    for idx, c in enumerate(db_clientes):
-        if c.id == cliente_id:
-            datos = c.model_dump()
-            actualizacion = cliente_data.model_dump(exclude_unset=True)
-            datos.update(actualizacion)
-            
-            cliente_modificado = Cliente(**datos)
-            db_clientes[idx] = cliente_modificado
-            return cliente_modificado
-            
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": {
-                "code": "RESOURCE_NOT_FOUND",
-                "message": f"No existe un cliente con el ID {cliente_id}",
-                "details": []
-            }
-        }
-    )
+
+@router.get("/{cliente_id}", response_model=Cliente)
+def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)):
+    cliente = db.get(ClienteORM, cliente_id)
+
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    return cliente
+
+
+@router.put("/{cliente_id}", response_model=Cliente)
+def actualizar_cliente(
+    cliente_id: int,
+    datos: ClienteUpdate,
+    db: Session = Depends(get_db),
+):
+    cliente = db.get(ClienteORM, cliente_id)
+
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        if valor is None:
+            raise HTTPException(status_code=422, detail=f"{campo} no puede ser nulo.")
+        setattr(cliente, campo, valor)
+
+    try:
+        db.commit()
+        db.refresh(cliente)
+        return cliente
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="No se pudo actualizar el cliente.")
+
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_cliente(cliente_id: int):
-    for idx, c in enumerate(db_clientes):
-        if c.id == cliente_id:
-            db_clientes.pop(idx)
-            return None
-            
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": {
-                "code": "RESOURCE_NOT_FOUND",
-                "message": f"No existe un cliente con el ID {cliente_id}",
-                "details": []
-            }
-        }
-    )
+def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db)):
+    cliente = db.get(ClienteORM, cliente_id)
+
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    db.delete(cliente)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el cliente tiene reservas asociadas.",
+        )

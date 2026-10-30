@@ -8,3 +8,6 @@ venv/
 
 # Variables de entorno
 .env
+
+# Pruebas
+.pytest_cache/

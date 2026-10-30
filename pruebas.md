@@ -2,48 +2,100 @@
 
 ## Ejecución reproducible
 
-Las pruebas usan una base SQLite temporal en memoria, crean todas las tablas ORM y activan las claves foráneas. No leen credenciales locales, no necesitan PostgreSQL y eliminan la base al cerrar cada caso.
+Las pruebas utilizan una base de datos SQLite temporal en memoria. Se crean las tablas ORM y se activan las claves foráneas. No requieren credenciales locales ni conexión a PostgreSQL. La base de datos se elimina al finalizar cada caso.
+
+Para preparar el entorno y ejecutar las pruebas:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
-python -m pytest -q
+python -m pytest -v
 ```
 
-Los datos de prueba se crean desde fixtures por caso. El seeder reutilizable para un PostgreSQL de desarrollo se ejecuta después de `alembic upgrade head` con `python scripts/seed.py`.
+Los datos de prueba se crean mediante fixtures. El seeder reutilizable para PostgreSQL se ejecuta después de aplicar las migraciones con `alembic upgrade head`, mediante `python scripts/seed.py`.
 
-## Casos ejecutados
+## Resultados de la última ejecución
 
-Última ejecución local: Python 3.13, `python -m pytest -q` — **15 aprobados, 6 omitidos**. Los omitidos corresponden a rutas/reglas aún ausentes de `main`; se explicitan en las pruebas y se deben habilitar cuando los respectivos PR estén integrados.
+Última ejecución local: Python 3.13, `python -m pytest -v`.
 
-| ID | Área | Entrada y comprobación | Resultado observado | Estado |
-| --- | --- | --- | --- | --- |
-| CLI-01 | Clientes | Crear cliente y consultarlo por ID | `POST 201`, `GET 200`, email conservado | Aprobado |
-| CLI-02 | Clientes | Repetir correo | `409` | Aprobado |
-| CLI-03 | Clientes | Correo inválido | `422` | Aprobado |
-| CLI-04 | Clientes | ID inexistente | `404` | Aprobado |
-| CLI-05 | Clientes | Listar con límite y desplazamiento | `200`, 3 totales y 2 elementos de página | Aprobado |
-| SER-01 | Servicios | Crear y listar | `POST 201`, `GET 200` | Aprobado |
-| SER-02 | Servicios | Precio negativo o duración cero | `422` en ambos casos | Aprobado |
-| SER-03 | Servicios | Consultar ID inexistente | Preparado; la ruta `GET /servicios/{servicio_id}` no está en `main` | Omitido |
-| SER-04 | Servicios | Actualizar y consultar ID inexistente | Preparado; `PUT /servicios/{servicio_id}` no está en `main` | Omitido |
-| SER-05 | Servicios | Eliminar e ID inexistente | Preparado; `DELETE /servicios/{servicio_id}` no está en `main` | Omitido |
-| PRO-01 | Profesionales | Repetir asociación profesional-servicio | Restricción única rechaza el duplicado | Aprobado |
-| PRO-02 | Profesionales | CRUD y asignación por HTTP | Preparado; el router `/profesionales` no está en `main` | Omitido |
-| CIT-01 | Citas | Crear cita con cliente, profesional, servicio y relación existente | `201`; se guardan una reserva y una cita | Aprobado |
-| CIT-02 | Citas | Fecha con formato inválido | `422` | Aprobado |
-| CIT-03 | Citas | ID inexistente | `404` | Aprobado |
-| CIT-04 | Citas | Filtrar estado, ordenar y paginar | `200`, metadatos y elemento esperado | Aprobado |
-| CIT-05 | Agenda | Fecha pasada | Preparado; rechazo aún no implementado en `main` | Omitido |
-| CIT-06 | Agenda | Dos citas superpuestas para la profesional | Preparado; regla de traslape aún no implementada en `main` | Omitido |
-| CIT-07 | Transacción | Simular fallo al insertar la cita después de crear reserva | `409`; rollback deja 0 reservas y 0 citas | Aprobado |
-| SEE-01 | Seeder | Ejecutarlo dos veces sobre base vacía | Mantiene 2 clientes, servicios, profesionales, asociaciones, reservas y citas | Aprobado |
+**Resultado: 36 aprobados, 3 omitidos y 0 fallidos.**
 
-## Alcance y pendientes
+| Área | Pruebas aprobadas | Pruebas omitidas |
+|---|---:|---:|
+| Citas | 24 | 0 |
+| Clientes | 5 | 0 |
+| Profesionales | 1 | 1 |
+| Servicios | 5 | 2 |
+| Seeder | 1 | 0 |
+| **Total** | **36** | **3** |
 
-- Las pruebas ejercitan las rutas integradas en la rama actual y las relaciones con SQLite; no demuestran el comportamiento real de PostgreSQL.
-- Docker, la migración Alembic desde una base PostgreSQL vacía y la persistencia después de reiniciar el servidor todavía requieren una configuración PostgreSQL disponible.
-- Los casos omitidos están identificados con `pytest.mark.skip` y explican la ruta o regla faltante. No cuentan como aprobados.
-- La prueba de rollback inyecta un error de integridad durante la segunda escritura de `/citas` y comprueba que no quede una reserva huérfana.
-- El seeder usa correos `seed.*@example.test` y motivos con prefijo `[SEED]` para identificar sus datos; no elimina otros registros.
+## Casos de prueba de citas
+
+| ID | Área | Entrada y comprobación | Resultado |
+|---|---|---|---|
+| CIT-01 | Citas | Crear cita y comprobar reserva y cita en base de datos | Aprobado |
+| CIT-02 | Citas | Fecha con formato inválido | Aprobado |
+| CIT-03 | Citas | Consultar cita inexistente | Aprobado |
+| CIT-04 | Citas | Filtrar, ordenar y paginar citas | Aprobado |
+| CIT-05 | Agenda | Rechazar fecha pasada | Aprobado |
+| CIT-06 | Agenda | Rechazar citas con horarios superpuestos | Aprobado |
+| CIT-07 | Transacciones | Simular fallo durante la creación y comprobar rollback | Aprobado |
+| CIT-08 | Estados | Transiciones permitidas desde pendiente | Aprobado |
+| CIT-09 | Estados | Transición de confirmada a completada | Aprobado |
+| CIT-10 | Estados | Rechazar transiciones no permitidas | Aprobado |
+| CIT-11 | Agenda | Rechazar actualización a fecha pasada | Aprobado |
+| CIT-12 | CRUD | Consultar una cita existente | Aprobado |
+| CIT-13 | CRUD | Actualizar motivo de una cita | Aprobado |
+| CIT-14 | CRUD | Eliminar una cita existente | Aprobado |
+| CIT-15 | CRUD | Eliminar una cita inexistente | Aprobado |
+| CIT-16 | Validaciones | Rechazar servicio inexistente | Aprobado |
+| CIT-17 | Validaciones | Rechazar profesional inexistente | Aprobado |
+| CIT-18 | Validaciones | Rechazar profesional sin asignación al servicio | Aprobado |
+| CIT-19 | Validaciones | Rechazar cliente inactivo | Aprobado |
+| CIT-20 | Validaciones | Rechazar servicio inactivo | Aprobado |
+| CIT-21 | Validaciones | Rechazar profesional inactivo | Aprobado |
+| CIT-22 | Agenda | Detectar solapamiento parcial de horarios | Aprobado |
+
+## Otras áreas verificadas
+
+- **Clientes:** creación, consulta, correo duplicado, formato de correo y paginación.
+- **Profesionales:** rechazo de asociaciones duplicadas entre profesionales y servicios.
+- **Servicios:** creación, listado, validación de precio y duración, y consulta de identificadores inexistentes.
+- **Seeder:** ejecución reproducible y creación de registros relacionados.
+
+## Pruebas omitidas
+
+Las siguientes pruebas están preparadas, pero se mantienen omitidas porque las operaciones correspondientes todavía no están integradas:
+
+| Área | Prueba omitida | Motivo |
+|---|---|---|
+| Profesionales | CRUD y asignación por HTTP | Router `/profesionales` pendiente de integración |
+| Servicios | Actualizar servicio | PUT `/servicios/{servicio_id}` pendiente de integración |
+| Servicios | Eliminar servicio | DELETE `/servicios/{servicio_id}` pendiente de integración |
+
+Las pruebas omitidas no se contabilizan como aprobadas.
+
+## Reglas de negocio implementadas en citas
+
+Actualmente se encuentran implementadas y verificadas mediante pruebas automatizadas:
+
+- Validación de existencia y actividad del cliente.
+- Validación de existencia y actividad del servicio.
+- Validación de existencia y actividad del profesional.
+- Validación de la asociación entre profesional y servicio.
+- Rechazo de fechas pasadas.
+- Prevención de conflictos y solapamientos de horarios.
+- Control de transiciones permitidas entre estados.
+- Actualización de fecha y motivo de la cita.
+- Manejo de transacciones y rollback ante errores.
+
+## Alcance y limitaciones
+
+- Las pruebas automatizadas utilizan SQLite temporal y verifican las rutas integradas en la aplicación.
+- Los resultados no demuestran por sí solos el funcionamiento de la conexión real con PostgreSQL.
+- La migración Alembic desde una base PostgreSQL vacía, la persistencia después de reiniciar el servidor y la configuración Docker/Compose requieren verificaciones adicionales.
+- El router de profesionales y las operaciones PUT y DELETE de servicios continúan pendientes de integración.
+- La prueba de rollback comprueba que un fallo durante la creación de la cita no deje una reserva huérfana.
+
+Los resultados documentados corresponden a la última ejecución local indicada y deben actualizarse cuando se incorporen nuevas funcionalidades o pruebas.

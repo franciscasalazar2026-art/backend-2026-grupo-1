@@ -13,7 +13,7 @@ from app.infrastructure.models import ServicioORM
 
 def poblar_base_de_datos():
     print("Iniciando sembrado de datos iniciales...")
-    
+
     # Intentar conexión a la BD principal; si falla, usar SQLite local
     try:
         Base.metadata.create_all(bind=engine)

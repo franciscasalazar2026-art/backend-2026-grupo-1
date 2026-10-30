@@ -37,6 +37,18 @@ def _fecha_a_datetime(valor: str) -> datetime:
             detail="La fecha debe tener un formato ISO válido.",
         )
 
+def _validar_fecha_futura(fecha: datetime) -> None:
+    ahora = (
+        datetime.now(fecha.tzinfo)
+        if fecha.tzinfo is not None
+        else datetime.now()
+    )
+
+    if fecha <= ahora:
+        raise HTTPException(
+            status_code=422,
+            detail="No se puede agendar una cita en el pasado.",
+        )
 
 def _opciones_cita():
     ruta_detalles = (
@@ -223,6 +235,8 @@ def crear_cita(
         raise HTTPException(status_code=400, detail="El cliente está inactivo.")
 
     fecha = _fecha_a_datetime(datos.fecha_hora)
+    _validar_fecha_futura(fecha)
+
     servicios_validados = []
     hora_actual = fecha
 
@@ -380,6 +394,8 @@ def actualizar_cita(
             )
 
         nueva_fecha = _fecha_a_datetime(cambios["fecha_hora"])
+        _validar_fecha_futura(nueva_fecha)
+
         hora_actual = nueva_fecha
         horarios_propuestos = []
 
@@ -422,7 +438,36 @@ def actualizar_cita(
                 status_code=422,
                 detail="El estado no puede ser nulo.",
             )
-        cita.estado = cambios["estado"]
+
+        transiciones_permitidas = {
+            EstadoCita.PENDIENTE: {
+                EstadoCita.CONFIRMADA,
+                EstadoCita.CANCELADA,
+            },
+            EstadoCita.CONFIRMADA: {
+                EstadoCita.CANCELADA,
+                EstadoCita.COMPLETADA,
+            },
+            EstadoCita.CANCELADA: set(),
+            EstadoCita.COMPLETADA: set(),
+        }
+
+        estado_actual = cita.estado
+        estado_nuevo = cambios["estado"]
+
+        if (
+            estado_nuevo != estado_actual
+            and estado_nuevo not in transiciones_permitidas[estado_actual]
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"No se permite cambiar el estado de "
+                    f"'{estado_actual.value}' a '{estado_nuevo.value}'."
+                ),
+            )
+
+        cita.estado = estado_nuevo
 
     try:
         db.commit()

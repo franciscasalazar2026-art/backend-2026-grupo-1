@@ -1,7 +1,7 @@
 # Avance de Isidora — pruebas, seeder y documentación
 
-**Fecha de revisión:** 28-10-2026  
-**Base revisada:** rama `main`, commit `1a1864a`  
+**Fecha de revisión:** 28-10-2026
+**Base revisada:** rama `main`, commit `1a1864a`
 **Alcance:** diagrama, suite de pruebas aislada, seeder repetible, README y matriz con resultados reales.
 
 ## Problema y supuestos por validar

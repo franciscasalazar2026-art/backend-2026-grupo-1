@@ -91,15 +91,15 @@ La agenda manual, los actores afectados y las consecuencias descritas en la prop
 
 ## Estado resumido
 
-- **Preparado en esta rama:** documentación técnica, diagramas, plantilla de variables, seeder repetible y pruebas automatizadas.
-- **Presente en el código de `main`:** rutas de clientes, citas y servicios; modelos SQLAlchemy; migración inicial.
-- **Pendiente de evidencia:** conexión PostgreSQL, migración aplicada desde cero, Swagger y persistencia tras reinicio.
-- **Pendiente de implementación/integración:** router de profesionales, operaciones restantes de servicios y reglas de agenda para fechas pasadas y traslapes.
-- **Pendiente de integración:** configuración Docker/Compose y confirmación de P1–P3.
-=======
-# API REST - Sistema de Gestión de Citas y Servicios
+- **Implementado:** endpoints de clientes, citas y servicios disponibles en el código.
+- **Implementado:** modelos ORM, relaciones entre entidades y sesiones SQLAlchemy por solicitud.
+- **Implementado:** reglas de negocio de citas, incluyendo validación de clientes, servicios y profesionales, fechas futuras, asignaciones profesionales-servicios, prevención de solapamientos y transiciones de estados.
+- **Verificado mediante pruebas:** 36 pruebas aprobadas, 3 omitidas y 0 fallidas en la última ejecución local.
+- **Pendiente de integración:** router de profesionales y operaciones PUT y DELETE de servicios.
+- **Pendiente de evidencia:** conexión con PostgreSQL, aplicación de migraciones desde una base vacía y persistencia después de reiniciar el servidor.
+- **Pendiente de integración:** configuración Docker/Compose y validación de los puntos P1–P3 con el negocio.
 
-API Backend desarrollada con FastAPI para la gestión de clientes, agendamiento de citas y servicios.
+Para conocer el detalle de los casos de prueba y sus resultados, consultar [pruebas.md](pruebas.md).
 
 ---
 

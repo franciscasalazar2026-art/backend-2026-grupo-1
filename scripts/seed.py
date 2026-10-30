@@ -17,6 +17,8 @@ from app.infrastructure.models import (
     ServicioORM,
 )
 
+from app.infrastructure.models.detalle_reserva import DetalleReservaORM
+
 SEED_PREFIX = "[SEED]"
 
 
@@ -139,15 +141,28 @@ def seed_data(db: Session) -> dict[str, int]:
         db.flush()
 
         first_day = datetime.now(timezone.utc) + timedelta(days=7)
+
         for index, (cliente, assignment) in enumerate(
             zip(clients, assignments, strict=True), start=1
         ):
             reservation = ReservaORM(
                 cliente_id=cliente.id,
-                profesional_servicio_id=assignment.id,
             )
             db.add(reservation)
             db.flush()
+
+            service = assignment.servicio
+
+            db.add(
+                DetalleReservaORM(
+                    reserva_id=reservation.id,
+                    profesional_servicio_id=assignment.id,
+                    fecha_hora_inicio=first_day + timedelta(days=index),
+                    duracion_minutos=service.duracion_minutos,
+                    precio=service.precio,
+                )
+            )
+
             db.add(
                 CitaORM(
                     reserva_id=reservation.id,
@@ -158,6 +173,7 @@ def seed_data(db: Session) -> dict[str, int]:
             )
 
         db.commit()
+
     except Exception:
         db.rollback()
         raise
@@ -170,7 +186,6 @@ def seed_data(db: Session) -> dict[str, int]:
         "reservas": len(clients),
         "citas": len(clients),
     }
-
 
 def main() -> None:
     with SessionLocal() as db:

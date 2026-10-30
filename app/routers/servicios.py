@@ -1,5 +1,5 @@
 ﻿from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, Depends, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -105,7 +105,7 @@ def eliminar_servicio(servicio_id: int, db: Session = Depends(get_db)):
 
     servicio.activo = False
     db.commit()
-    return None        
+    return None
 
 @router.patch("/{servicio_id}/restaurar", response_model=ServicioResponse)
 def restaurar_servicio(servicio_id: int, db: Session = Depends(get_db)):

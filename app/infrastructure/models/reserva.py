@@ -20,12 +20,6 @@ class ReservaORM(Base):
         index=True,
     )
 
-    profesional_servicio_id: Mapped[int] = mapped_column(
-        ForeignKey("profesional_servicios.id"),
-        nullable=False,
-        index=True,
-    )
-
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -37,13 +31,16 @@ class ReservaORM(Base):
         back_populates="reservas",
     )
 
-    profesional_servicio: Mapped["ProfesionalServicioORM"] = relationship(
-        "ProfesionalServicioORM",
-        back_populates="reservas",
+    detalles: Mapped[list["DetalleReservaORM"]] = relationship(
+        "DetalleReservaORM",
+        back_populates="reserva",
+        cascade="all, delete-orphan",
     )
 
     cita: Mapped[Optional["CitaORM"]] = relationship(
         "CitaORM",
         back_populates="reserva",
         uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

@@ -15,7 +15,7 @@ class CitaORM(Base):
     )
 
     reserva_id: Mapped[int] = mapped_column(
-        ForeignKey("reservas.id"),
+        ForeignKey("reservas.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,

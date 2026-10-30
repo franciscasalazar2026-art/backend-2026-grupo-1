@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+﻿from datetime import datetime, timedelta
 from math import ceil
 from typing import Optional
 
@@ -12,6 +12,7 @@ from app.infrastructure.database import get_db
 from app.infrastructure.models import (
     CitaORM,
     ClienteORM,
+    DetalleReservaORM,
     ProfesionalORM,
     ProfesionalServicioORM,
     ReservaORM,
@@ -30,42 +31,126 @@ router = APIRouter(prefix="/citas", tags=["Citas"])
 def _fecha_a_datetime(valor: str) -> datetime:
     try:
         return datetime.fromisoformat(valor.replace("Z", "+00:00"))
-    except ValueError:
+    except (ValueError, AttributeError):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="La fecha debe tener un formato ISO válido.",
         )
 
 
 def _opciones_cita():
+    ruta_detalles = (
+        joinedload(CitaORM.reserva)
+        .joinedload(ReservaORM.detalles)
+        .joinedload(DetalleReservaORM.profesional_servicio)
+    )
+
     return (
-        joinedload(CitaORM.reserva).joinedload(
-            ReservaORM.profesional_servicio
-        ),
+        ruta_detalles.joinedload(ProfesionalServicioORM.profesional),
+        ruta_detalles.joinedload(ProfesionalServicioORM.servicio),
     )
 
 
 def _buscar_cita(db: Session, cita_id: int) -> Optional[CitaORM]:
-    return db.scalar(
+    consulta = (
         select(CitaORM)
         .options(*_opciones_cita())
         .where(CitaORM.id == cita_id)
     )
+    return db.scalars(consulta).unique().first()
 
 
 def _respuesta_cita(cita: CitaORM) -> dict:
     reserva = cita.reserva
-    profesional_servicio = reserva.profesional_servicio
+    detalles = sorted(reserva.detalles, key=lambda detalle: detalle.id)
+
+    servicios = []
+    for detalle in detalles:
+        relacion = detalle.profesional_servicio
+        servicio = relacion.servicio
+        profesional = relacion.profesional
+
+        servicios.append(
+            {
+                "servicio_id": servicio.id,
+                "servicio_nombre": servicio.nombre,
+                "profesional_id": profesional.id,
+                "profesional_nombre": profesional.nombre,
+                "fecha_hora_inicio": detalle.fecha_hora_inicio.isoformat(),
+                "duracion_minutos": detalle.duracion_minutos,
+                "precio": detalle.precio,
+            }
+        )
 
     return {
         "id": cita.id,
         "cliente_id": reserva.cliente_id,
-        "servicio_id": profesional_servicio.servicio_id,
-        "profesional_id": profesional_servicio.profesional_id,
+        "servicio_id": servicios[0]["servicio_id"] if len(servicios) == 1 else None,
+        "profesional_id": servicios[0]["profesional_id"] if len(servicios) == 1 else None,
         "fecha_hora": cita.fecha_hora.isoformat(),
         "motivo": cita.motivo,
         "estado": cita.estado,
+        "servicios": servicios,
     }
+
+
+def _esta_cancelada(estado) -> bool:
+    valor = str(getattr(estado, "value", estado)).lower()
+    return "cancel" in valor or "anulad" in valor
+
+
+def _tiene_conflicto(
+    db: Session,
+    profesional_id: int,
+    inicio: datetime,
+    fin: datetime,
+    excluir_cita_id: Optional[int] = None,
+) -> bool:
+    consulta = (
+        select(DetalleReservaORM, CitaORM)
+        .join(
+            ReservaORM,
+            DetalleReservaORM.reserva_id == ReservaORM.id,
+        )
+        .join(
+            CitaORM,
+            CitaORM.reserva_id == ReservaORM.id,
+        )
+        .join(
+            ProfesionalServicioORM,
+            DetalleReservaORM.profesional_servicio_id
+            == ProfesionalServicioORM.id,
+        )
+        .where(ProfesionalServicioORM.profesional_id == profesional_id)
+    )
+
+    for detalle, cita in db.execute(consulta):
+        if excluir_cita_id is not None and cita.id == excluir_cita_id:
+            continue
+
+        if _esta_cancelada(cita.estado):
+            continue
+
+        inicio_existente = detalle.fecha_hora_inicio
+        fin_existente = inicio_existente + timedelta(
+            minutes=detalle.duracion_minutos
+        )
+
+        inicio_nuevo = inicio
+        fin_nuevo = fin
+
+        # SQLite puede devolver fechas sin zona horaria.
+        if inicio_existente.tzinfo is None and inicio_nuevo.tzinfo is not None:
+            inicio_existente = inicio_existente.replace(tzinfo=inicio_nuevo.tzinfo)
+            fin_existente = fin_existente.replace(tzinfo=inicio_nuevo.tzinfo)
+        elif inicio_existente.tzinfo is not None and inicio_nuevo.tzinfo is None:
+            inicio_nuevo = inicio_nuevo.replace(tzinfo=inicio_existente.tzinfo)
+            fin_nuevo = fin_nuevo.replace(tzinfo=inicio_existente.tzinfo)
+
+        if inicio_nuevo < fin_existente and inicio_existente < fin_nuevo:
+            return True
+
+    return False
 
 
 @router.get(
@@ -74,13 +159,8 @@ def _respuesta_cita(cita: CitaORM) -> dict:
     status_code=status.HTTP_200_OK,
 )
 def listar_citas(
-    estado: Optional[EstadoCita] = Query(
-        None, description="Filtrar por estado"
-    ),
-    ordenar_por: str = Query(
-        "fecha_hora",
-        pattern="^(id|fecha_hora|estado)$",
-    ),
+    estado: Optional[EstadoCita] = Query(None, description="Filtrar por estado"),
+    ordenar_por: str = Query("fecha_hora", pattern="^(id|fecha_hora|estado)$"),
     direccion: str = Query("asc", pattern="^(asc|desc)$"),
     pagina: int = Query(1, ge=1),
     limite: int = Query(10, ge=1, le=100),
@@ -132,64 +212,102 @@ def crear_cita(
     db: Session = Depends(get_db),
 ):
     cliente = db.get(ClienteORM, datos.cliente_id)
+
     if cliente is None:
         raise HTTPException(
             status_code=400,
             detail=f"El cliente con ID {datos.cliente_id} no existe.",
         )
+
     if not cliente.activo:
-        raise HTTPException(
-            status_code=400,
-            detail="El cliente está inactivo.",
-        )
-
-    profesional = db.get(ProfesionalORM, datos.profesional_id)
-    if profesional is None:
-        raise HTTPException(
-            status_code=400,
-            detail="El profesional indicado no existe.",
-        )
-    if not profesional.activo:
-        raise HTTPException(
-            status_code=400,
-            detail="El profesional está inactivo.",
-        )
-
-    servicio = db.get(ServicioORM, datos.servicio_id)
-    if servicio is None:
-        raise HTTPException(
-            status_code=400,
-            detail="El servicio indicado no existe.",
-        )
-    if not servicio.activo:
-        raise HTTPException(
-            status_code=400,
-            detail="El servicio está inactivo.",
-        )
-
-    relacion = db.scalar(
-        select(ProfesionalServicioORM).where(
-            ProfesionalServicioORM.profesional_id
-            == datos.profesional_id,
-            ProfesionalServicioORM.servicio_id == datos.servicio_id,
-        )
-    )
-
-    if relacion is None:
-        raise HTTPException(
-            status_code=400,
-            detail="El profesional no tiene asociado ese servicio.",
-        )
+        raise HTTPException(status_code=400, detail="El cliente está inactivo.")
 
     fecha = _fecha_a_datetime(datos.fecha_hora)
+    servicios_validados = []
+    hora_actual = fecha
+
+    for item in datos.servicios:
+        servicio = db.get(ServicioORM, item.servicio_id)
+        profesional = db.get(ProfesionalORM, item.profesional_id)
+
+        if servicio is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El servicio con ID {item.servicio_id} no existe.",
+            )
+
+        if not servicio.activo:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El servicio '{servicio.nombre}' está inactivo.",
+            )
+
+        if profesional is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El profesional con ID {item.profesional_id} no existe.",
+            )
+
+        if not profesional.activo:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El profesional '{profesional.nombre}' está inactivo.",
+            )
+
+        relacion = db.scalar(
+            select(ProfesionalServicioORM).where(
+                ProfesionalServicioORM.profesional_id == profesional.id,
+                ProfesionalServicioORM.servicio_id == servicio.id,
+            )
+        )
+
+        if relacion is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"El profesional '{profesional.nombre}' no tiene "
+                    f"asociado el servicio '{servicio.nombre}'."
+                ),
+            )
+
+        fin_servicio = hora_actual + timedelta(
+            minutes=servicio.duracion_minutos
+        )
+
+        if _tiene_conflicto(
+            db,
+            profesional.id,
+            hora_actual,
+            fin_servicio,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"El profesional '{profesional.nombre}' ya tiene "
+                    f"una atención que se cruza con el horario solicitado."
+                ),
+            )
+
+        servicios_validados.append(
+            (relacion, servicio, hora_actual)
+        )
+        hora_actual = fin_servicio
 
     try:
-        reserva = ReservaORM(
-            cliente_id=cliente.id,
-            profesional_servicio_id=relacion.id,
-        )
+        reserva = ReservaORM(cliente_id=cliente.id)
         db.add(reserva)
         db.flush()
+
+        for relacion, servicio, hora_inicio in servicios_validados:
+            db.add(
+                DetalleReservaORM(
+                    reserva_id=reserva.id,
+                    profesional_servicio_id=relacion.id,
+                    fecha_hora_inicio=hora_inicio,
+                    duracion_minutos=servicio.duracion_minutos,
+                    precio=servicio.precio,
+                )
+            )
 
         nueva_cita = CitaORM(
             reserva_id=reserva.id,
@@ -210,7 +328,7 @@ def crear_cita(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="No fue posible registrar la cita por una restricción de la base de datos.",
+            detail="No fue posible registrar la cita por un conflicto con los datos.",
         )
 
 
@@ -260,7 +378,35 @@ def actualizar_cita(
                 status_code=422,
                 detail="La fecha y hora no pueden ser nulas.",
             )
-        cita.fecha_hora = _fecha_a_datetime(cambios["fecha_hora"])
+
+        nueva_fecha = _fecha_a_datetime(cambios["fecha_hora"])
+        hora_actual = nueva_fecha
+        horarios_propuestos = []
+
+        for detalle in sorted(cita.reserva.detalles, key=lambda d: d.id):
+            fin_servicio = hora_actual + timedelta(
+                minutes=detalle.duracion_minutos
+            )
+            profesional_id = detalle.profesional_servicio.profesional_id
+
+            if _tiene_conflicto(
+                db,
+                profesional_id,
+                hora_actual,
+                fin_servicio,
+                excluir_cita_id=cita.id,
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="El nuevo horario entra en conflicto con otra atención.",
+                )
+
+            horarios_propuestos.append((detalle, hora_actual))
+            hora_actual = fin_servicio
+
+        cita.fecha_hora = nueva_fecha
+        for detalle, hora_inicio in horarios_propuestos:
+            detalle.fecha_hora_inicio = hora_inicio
 
     if "motivo" in cambios:
         if cambios["motivo"] is None:
@@ -278,7 +424,14 @@ def actualizar_cita(
             )
         cita.estado = cambios["estado"]
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo actualizar la cita por un conflicto con los datos.",
+        )
 
     cita_actualizada = _buscar_cita(db, cita_id)
     return _respuesta_cita(cita_actualizada)
@@ -301,11 +454,17 @@ def eliminar_cita(
         )
 
     reserva = cita.reserva
-
-    # Elimina ambos registros para no dejar una reserva huérfana.
     db.delete(cita)
     db.flush()
     db.delete(reserva)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo eliminar la cita y sus servicios asociados.",
+        )
 
     return None

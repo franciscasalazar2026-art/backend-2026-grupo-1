@@ -41,7 +41,7 @@ class ProfesionalServicioORM(Base):
         back_populates="profesional_servicios",
     )
 
-    reservas: Mapped[list["ReservaORM"]] = relationship(
-        "ReservaORM",
+    detalles: Mapped[list["DetalleReservaORM"]] = relationship(
+        "DetalleReservaORM",
         back_populates="profesional_servicio",
     )

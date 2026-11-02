@@ -19,16 +19,16 @@ Los datos de prueba se crean mediante fixtures. El seeder reutilizable para Post
 
 Última ejecución local: Python 3.13, `python -m pytest -v`.
 
-**Resultado: 36 aprobados, 3 omitidos y 0 fallidos.**
+**Resultado: 37 aprobados, 3 omitidos y 0 fallidos.**
 
 | Área | Pruebas aprobadas | Pruebas omitidas |
 |---|---:|---:|
-| Citas | 24 | 0 |
+| Citas | 25 | 0 |
 | Clientes | 5 | 0 |
 | Profesionales | 1 | 1 |
 | Servicios | 5 | 2 |
 | Seeder | 1 | 0 |
-| **Total** | **36** | **3** |
+| **Total** | **37** | **3** |
 
 ## Casos de prueba de citas
 
@@ -56,6 +56,7 @@ Los datos de prueba se crean mediante fixtures. El seeder reutilizable para Post
 | CIT-20 | Validaciones | Rechazar servicio inactivo | Aprobado |
 | CIT-21 | Validaciones | Rechazar profesional inactivo | Aprobado |
 | CIT-22 | Agenda | Detectar solapamiento parcial de horarios | Aprobado |
+| CIT-23 | Validaciones | Rechazar cliente inexistente | Aprobado |
 
 ## Otras áreas verificadas
 

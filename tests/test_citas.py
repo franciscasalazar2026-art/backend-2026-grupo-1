@@ -307,3 +307,11 @@ def test_solapamiento_parcial_de_citas_retorna_conflicto(client, agenda_ids):
     )
 
     assert segunda.status_code == 409
+
+def test_cliente_inexistente_no_puede_crear_cita(client, agenda_ids):
+    payload = cita_payload(agenda_ids)
+    payload["cliente_id"] = 999999
+
+    response = client.post("/citas", json=payload)
+
+    assert response.status_code == 400

@@ -22,7 +22,11 @@ def test_create_and_list_servicios(client):
     listed = client.get("/servicios")
 
     assert listed.status_code == 200
-    assert [item["id"] for item in listed.json()] == [created.json()["id"]]
+    # Adaptado a la respuesta paginada estructurada:
+    data = listed.json()
+    assert "items" in data
+    assert [item["id"] for item in data["items"]] == [created.json()["id"]]
+    assert data["total"] == 1
 
 
 @pytest.mark.parametrize(
@@ -44,7 +48,6 @@ def test_get_missing_servicio_returns_not_found(client):
     assert response.status_code == 404
 
 
-@pytest.mark.skip(reason="PUT /servicios/{servicio_id} pendiente de integración")
 def test_update_servicio_and_validate_missing_id(client):
     created = client.post("/servicios", json=servicio_payload())
     servicio_id = created.json()["id"]
@@ -56,10 +59,9 @@ def test_update_servicio_and_validate_missing_id(client):
 
     assert updated.status_code == 200
     assert updated.json()["precio"] == "15000.00"
-    assert client.put("/servicios/999999", json={"precio": "15000"}).status_code == 404
+    assert client.put("/servicios/999999", json={"precio": "15000.00"}).status_code == 404
 
 
-@pytest.mark.skip(reason="DELETE /servicios/{servicio_id} pendiente de integración")
 def test_delete_servicio_and_validate_missing_id(client):
     created = client.post("/servicios", json=servicio_payload())
     servicio_id = created.json()["id"]

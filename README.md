@@ -1,160 +1,91 @@
-# Backend 2026 — Gestión de citas y servicios
+﻿# Backend 2026 — Gestión de citas y servicios
 
-API REST para gestionar clientes, citas y servicios de un centro atendido por profesionales. El repositorio está en transición desde una API inicial hacia persistencia en PostgreSQL con SQLAlchemy y migraciones Alembic.
-
-> **Estado del avance:** el código de `main` contiene routers, modelos ORM y una migración inicial. La ejecución integrada depende de configurar PostgreSQL. En esta rama no hay `compose.yml` ni `.env` real; `.env.example` es solo una plantilla. No se debe afirmar que la conexión o la persistencia están probadas hasta ejecutar las verificaciones descritas en [`pruebas.md`](pruebas.md).
-
-## Integrantes y áreas
-
-| Integrante | Área de trabajo |
-|---|---|
-| Francisca Alvarado | Citas, profesionales y reglas de negocio |
-| Camila Fuentes | Modelos ORM y relaciones |
-| Emily Jara | CRUD de clientes y servicios |
-| Francisca Salazar | Integración, configuración y Docker |
-| Isidora Valverde | Diagrama, pruebas y documentación |
-
-## Arquitectura actual
-
-- `app/main.py` registra los routers de clientes, citas y servicios.
-- `app/routers/` expone los endpoints y utiliza SQLAlchemy para leer y escribir.
-- `app/infrastructure/database.py` lee `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`, crea el engine y entrega una sesión por solicitud.
-- `app/infrastructure/models/` contiene las tablas ORM.
-- `app/domain/models.py` define el estado de una cita.
-- `app/schemas/` contiene los DTO y esquemas de respuesta Pydantic.
-- `migrations/` y `alembic.ini` contienen la configuración y la migración versionada.
-
-El detalle de las entidades y sus cardinalidades está en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md). La estructura observada no contiene todavía un `compose.yml`; la matriz de avance distingue lo implementado de lo que falta integrar.
-
-## Requisitos
-
-- Python 3.10 o superior.
-- PostgreSQL disponible y credenciales acordadas por el equipo.
-- Dependencias de [`requirements.txt`](requirements.txt).
-- Para pruebas automatizadas: dependencias de [`requirements-dev.txt`](requirements-dev.txt).
-
-## Preparar el entorno local
-
-1. Clona el repositorio y entra en la carpeta:
-
-   ```powershell
-   git clone https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git
-   cd backend-2026-grupo-1
-   ```
-
-2. Crea y activa un entorno virtual, e instala las dependencias:
-
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements-dev.txt
-   ```
-
-3. Copia `.env.example` a `.env` y completa los valores que el equipo confirme para PostgreSQL:
-
-   ```powershell
-   Copy-Item .env.example .env
-   ```
-
-   No subas `.env` ni contraseñas a GitHub. La plantilla deja las variables vacías intencionalmente porque no hay un `compose.yml` en `main` que confirme el nombre de la base, usuario o contraseña.
-
-4. Con PostgreSQL en ejecución y `.env` completo, aplica la migración y levanta la API:
-
-   ```powershell
-   alembic upgrade head
-   uvicorn app.main:app --reload
-   ```
-
-   `alembic upgrade head` y `uvicorn` requieren una base de datos accesible. El comando de Docker queda pendiente hasta que se incorpore y valide el archivo Compose del equipo.
-
-5. En otra terminal, crea los datos de demostración con `python scripts/seed.py`. El seeder es repetible y conserva registros que no identifica como datos de demostración.
-
-6. Ejecuta las pruebas automatizadas con `python -m pytest -q`. Estas usan SQLite temporal y no necesitan la base PostgreSQL.
-
-## Endpoints disponibles en el código
-
-Los routers actuales no usan el prefijo `/api`.
-
-| Recurso | Operaciones |
-|---|---|
-| `/clientes` | `GET`, `POST`, `GET /{cliente_id}`, `PUT /{cliente_id}`, `DELETE /{cliente_id}` |
-| `/servicios` | `GET`, `POST` |
-| `/citas` | `GET`, `POST`, `GET /{cita_id}`, `PUT /{cita_id}`, `DELETE /{cita_id}` |
-
-El router de profesionales y las operaciones `GET` por ID, `PUT` y `DELETE` de servicios todavía no aparecen en `main`. Los casos preparados para esas rutas se dejan omitidos hasta integrar los cambios correspondientes.
-
-La colección reproducible de solicitudes está en [`postman/isidora-clientes.postman_collection.json`](postman/isidora-clientes.postman_collection.json). La tabla de casos y los resultados observados están en [`pruebas.md`](pruebas.md).
-
-## Problema y alcance por validar
-
-La agenda manual, los actores afectados y las consecuencias descritas en la propuesta son **hipótesis de trabajo**, no hechos confirmados con el negocio. En [`docs/avance-isidora.md`](docs/avance-isidora.md) quedan marcados P1–P3 como pendientes de validación. El sistema no debe presentarse como solución de una situación real hasta confirmar esos puntos con el grupo y el negocio.
-
-## Estado resumido
-
-- **Implementado:** endpoints de clientes, citas y servicios disponibles en el código.
-- **Implementado:** modelos ORM, relaciones entre entidades y sesiones SQLAlchemy por solicitud.
-- **Implementado:** reglas de negocio de citas, incluyendo validación de clientes, servicios y profesionales, fechas futuras, asignaciones profesionales-servicios, prevención de solapamientos y transiciones de estados.
-- **Verificado mediante pruebas:** 36 pruebas aprobadas, 3 omitidas y 0 fallidas en la última ejecución local.
-- **Pendiente de integración:** router de profesionales y operaciones PUT y DELETE de servicios.
-- **Pendiente de evidencia:** conexión con PostgreSQL, aplicación de migraciones desde una base vacía y persistencia después de reiniciar el servidor.
-- **Pendiente de integración:** configuración Docker/Compose y validación de los puntos P1–P3 con el negocio.
-
-Para conocer el detalle de los casos de prueba y sus resultados, consultar [pruebas.md](pruebas.md).
+API REST desarrollada con FastAPI y SQLAlchemy para gestionar clientes, citas, profesionales y servicios de un centro de atención.
 
 ---
 
-## Integrantes y Responsabilidades
+## Integrantes y Áreas de Responsabilidad
 
 | Estudiante | Área de Responsabilidad |
 | :--- | :--- |
 | Francisca Alvarado | Módulo de Clientes |
 | Camila Fuentes | Módulo de Citas |
 | Emily Jara | Módulo de Servicios |
-| Francisca Salazar | Infraestructura y Base de Datos |
+| Francisca Salazar | Infraestructura, Base de Datos y Docker |
 | Isidora Valverde | Documentación y Pruebas |
 
 ---
 
-## Requisitos de Instalación y Ejecución
+## Arquitectura del Proyecto
 
-### 1. Clonar el repositorio
+- \pp/main.py\: Punto de entrada que registra todos los routers de la API.
+- \pp/routers/\: Módulos que exponen los endpoints (\clientes\, \citas\, \servicios\, \profesionales\).
+- \pp/infrastructure/database.py\: Gestión de conexión y sesiones de SQLAlchemy.
+- \pp/infrastructure/models/\: Definición de tablas y relaciones ORM.
+- \pp/schemas/\: Esquemas de validación y DTOs con Pydantic.
+- \migrations/\: Historial de migraciones con Alembic.
+
+El detalle de las entidades y sus cardinalidades está en [\docs/diagrama-entidades.md\ ](docs/diagrama-entidades.md).
+
+---
+
+## Requisitos de Instalación y Configuración
+
+- Python 3.10 o superior.
+- PostgreSQL disponible (o SQLite local para pruebas).
+- Dependencias de [\equirements-dev.txt\ ](requirements-dev.txt).
+
+### 1. Clonar el repositorio y preparar el entorno
+
+\\\powershell
 git clone https://github.com/franciscasalazar2026-art/backend-2026-grupo-1.git
 cd backend-2026-grupo-1
 
-### 2. Crear y activar un entorno virtual
-python -m venv venv
-# En Windows (PowerShell):
-.\venv\Scripts\activate
-# En Linux/macOS:
-source venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+\\\
 
-### 3. Instalar dependencias
-pip install -r requirements.txt
+### 2. Variables de Entorno
 
-### 4. Levantar el servidor de desarrollo
+Copia la plantilla y configura tus credenciales locales:
+
+\\\powershell
+Copy-Item .env.example .env
+\\\
+
+### 3. Migraciones y Ejecución del Servidor
+
+\\\powershell
+alembic upgrade head
 uvicorn app.main:app --reload
+\\\
 
-Accede a la documentación interactiva en: http://127.0.0.1:8000/docs
+Documentación interactiva disponible en: \http://127.0.0.1:8000/docs\
 
 ---
 
 ## Poblado de Datos Iniciales (Seeder)
 
-Para poblar la base de datos con el catálogo inicial de servicios y facilitar las pruebas locales:
+Para crear los datos de demostración y catálogo inicial:
 
-python scripts/seed_data.py
-
-> **Nota:** El script intenta conectar a PostgreSQL por defecto y cuenta con fallback automático a SQLite local para entorno de desarrollo.
+\\\powershell
+python -m scripts.seed
+\\\
 
 ---
 
 ## Pruebas Automatizadas (Pytest)
 
-El proyecto cuenta con una suite de pruebas automatizadas con pytest que utiliza SQLite en memoria para validar las operaciones y DTOs de servicios.
+Las pruebas ejecutan la suite automatizada utilizando una base de datos SQLite en memoria para validar las operaciones, reglas de negocio y esquemas DTO.
 
-Para ejecutar la suite de pruebas:
+Para ejecutar la suite completa de pruebas:
 
-python -m pytest tests/test_servicios.py
+\\\powershell
+python -m pytest
+\\\
+
+> **Estado actual:** 42 pruebas aprobadas, 1 omitida (100% exitoso en \main\).
 
 ---
 
@@ -181,7 +112,7 @@ python -m pytest tests/test_servicios.py
 ### Servicios
 | Método | Endpoint | Descripción | Código Éxito |
 | :--- | :--- | :--- | :--- |
-| GET | /servicios | Lista servicios con soporte para paginación y búsqueda por nombre (?buscar=) | 200 OK |
+| GET | /servicios | Lista servicios con paginación y búsqueda (\?buscar=\) | 200 OK |
 | POST | /servicios | Registra un nuevo servicio | 201 Created |
 | GET | /servicios/{id} | Obtiene detalle de un servicio por su ID | 200 OK |
 | PUT | /servicios/{id} | Actualiza la información de un servicio | 200 OK |

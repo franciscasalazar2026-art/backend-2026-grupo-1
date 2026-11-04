@@ -100,3 +100,6 @@ Los errores de validación y negocio pueden responder con `400`, `404`, `409` o 
 - El CRUD HTTP de profesionales sigue pendiente de integración y por eso su prueba está omitida, no aprobada.
 - Las pruebas de integración usan SQLite. La conexión PostgreSQL, migración desde una base vacía y persistencia tras reiniciar Docker requieren verificarse en el entorno del equipo.
 - La matriz [`pruebas.md`](pruebas.md) distingue los resultados ejecutados de las verificaciones pendientes.
+
+### Flujo de una Solicitud
+`Petición HTTP` ➔ `Router (Presentación)` ➔ `Servicio (Aplicación)` ➔ `Repositorio / ORM (Infraestructura)` ➔ `Base de Datos` ➔ `Respuesta DTO`

@@ -28,7 +28,12 @@ def listar_clientes(
     }
 
 
-@router.post("", response_model=Cliente, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=Cliente,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "El correo ya está registrado."}},
+)
 def crear_cliente(datos: ClienteCreate, db: Session = Depends(get_db)):
     cliente = ClienteORM(**datos.model_dump())
     db.add(cliente)
@@ -42,7 +47,11 @@ def crear_cliente(datos: ClienteCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="El correo ya está registrado.")
 
 
-@router.get("/{cliente_id}", response_model=Cliente)
+@router.get(
+    "/{cliente_id}",
+    response_model=Cliente,
+    responses={404: {"description": "Cliente no encontrado."}},
+)
 def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)):
     cliente = db.get(ClienteORM, cliente_id)
 
@@ -52,7 +61,14 @@ def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)):
     return cliente
 
 
-@router.put("/{cliente_id}", response_model=Cliente)
+@router.put(
+    "/{cliente_id}",
+    response_model=Cliente,
+    responses={
+        404: {"description": "Cliente no encontrado."},
+        409: {"description": "No se pudo actualizar el cliente."},
+    },
+)
 def actualizar_cliente(
     cliente_id: int,
     datos: ClienteUpdate,
@@ -77,7 +93,14 @@ def actualizar_cliente(
         raise HTTPException(status_code=409, detail="No se pudo actualizar el cliente.")
 
 
-@router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{cliente_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Cliente no encontrado."},
+        409: {"description": "El cliente tiene reservas asociadas."},
+    },
+)
 def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     cliente = db.get(ClienteORM, cliente_id)
 

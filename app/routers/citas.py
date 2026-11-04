@@ -218,6 +218,10 @@ def listar_citas(
     "",
     response_model=Cita,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"description": "Cliente, servicio o profesional inexistente o inactivo."},
+        409: {"description": "Conflicto de agenda o de integridad."},
+    },
 )
 def crear_cita(
     datos: CitaCreate,
@@ -350,6 +354,7 @@ def crear_cita(
     "/{cita_id}",
     response_model=Cita,
     status_code=status.HTTP_200_OK,
+    responses={404: {"description": "Cita no encontrada."}},
 )
 def obtener_cita(
     cita_id: int,
@@ -370,6 +375,11 @@ def obtener_cita(
     "/{cita_id}",
     response_model=Cita,
     status_code=status.HTTP_200_OK,
+    responses={
+        400: {"description": "Transición de estado no permitida."},
+        404: {"description": "Cita no encontrada."},
+        409: {"description": "Conflicto de agenda o de integridad."},
+    },
 )
 def actualizar_cita(
     cita_id: int,
@@ -485,6 +495,10 @@ def actualizar_cita(
 @router.delete(
     "/{cita_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Cita no encontrada."},
+        409: {"description": "No se pudo eliminar la cita y sus servicios asociados."},
+    },
 )
 def eliminar_cita(
     cita_id: int,

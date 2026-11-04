@@ -58,6 +58,7 @@ def listar_servicios(
     "",
     response_model=ServicioResponse,
     status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Conflicto al registrar el servicio."}},
 )
 def crear_servicio(
     datos: ServicioCreate,
@@ -82,7 +83,11 @@ def crear_servicio(
         )
 
 
-@router.get("/{servicio_id}", response_model=ServicioResponse)
+@router.get(
+    "/{servicio_id}",
+    response_model=ServicioResponse,
+    responses={404: {"description": "Servicio no encontrado."}},
+)
 def obtener_servicio(servicio_id: int, db: Session = Depends(get_db)):
     """Consulta un servicio específico del catálogo por su ID."""
     servicio = db.query(ServicioORM).filter(ServicioORM.id == servicio_id).first()
@@ -98,7 +103,14 @@ def obtener_servicio(servicio_id: int, db: Session = Depends(get_db)):
     return servicio
 
 
-@router.put("/{servicio_id}", response_model=ServicioResponse)
+@router.put(
+    "/{servicio_id}",
+    response_model=ServicioResponse,
+    responses={
+        404: {"description": "Servicio no encontrado."},
+        409: {"description": "Conflicto al actualizar el servicio."},
+    },
+)
 def actualizar_servicio(
     servicio_id: int,
     datos: ServicioUpdate,
@@ -136,7 +148,11 @@ def actualizar_servicio(
         )
 
 
-@router.delete("/{servicio_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{servicio_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"description": "Servicio no encontrado."}},
+)
 def eliminar_servicio(servicio_id: int, db: Session = Depends(get_db)):
     """Desactiva un servicio (borrado lógico) para preservar el historial de citas."""
     servicio = db.query(ServicioORM).filter(ServicioORM.id == servicio_id).first()
@@ -155,7 +171,11 @@ def eliminar_servicio(servicio_id: int, db: Session = Depends(get_db)):
     return None
 
 
-@router.patch("/{servicio_id}/restaurar", response_model=ServicioResponse)
+@router.patch(
+    "/{servicio_id}/restaurar",
+    response_model=ServicioResponse,
+    responses={404: {"description": "Servicio no encontrado."}},
+)
 def restaurar_servicio(servicio_id: int, db: Session = Depends(get_db)):
     """Reactiva un servicio que fue desactivado previamente mediante borrado lógico."""
     servicio = db.query(ServicioORM).filter(ServicioORM.id == servicio_id).first()

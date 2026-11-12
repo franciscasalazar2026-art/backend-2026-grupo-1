@@ -1,11 +1,11 @@
 ﻿
 from fastapi import FastAPI
 
-from app.routers import (
+from app.presentation.routers import (
     clientes,
-    citas,
-    servicios,
     profesionales,
+    servicios,
+    citas,
 )
 
 app = FastAPI(

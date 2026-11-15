@@ -1,7 +1,7 @@
-﻿
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 
 from app.presentation.routers import (
+    auth,
     clientes,
     profesionales,
     servicios,
@@ -14,6 +14,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.include_router(auth.router)
 app.include_router(clientes.router)
 app.include_router(citas.router)
 app.include_router(servicios.router)

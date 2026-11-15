@@ -1,7 +1,11 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-from app.presentation.dependencies import obtener_servicio_cliente
+from app.infrastructure.models.usuario import UsuarioORM
+from app.presentation.dependencies import (
+    get_current_user,
+    obtener_servicio_cliente,
+    require_role,
+)
 from app.application.services.cliente_servicio import (
     ClienteServicio,
     ClienteNoEncontrado,
@@ -26,6 +30,7 @@ def listar_clientes(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
+    _: UsuarioORM = Depends(get_current_user),
 ):
     return servicio.listar(limite=limit, desplazamiento=offset)
 
@@ -34,6 +39,7 @@ def listar_clientes(
 def crear_cliente(
     datos: ClienteCreate,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
+    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         return servicio.crear(datos.model_dump())
@@ -45,6 +51,7 @@ def crear_cliente(
 def obtener_cliente(
     cliente_id: int,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
+    _: UsuarioORM = Depends(get_current_user),
 ):
     try:
         return servicio.obtener(cliente_id)
@@ -57,6 +64,7 @@ def actualizar_cliente(
     cliente_id: int,
     datos: ClienteUpdate,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
+    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         return servicio.actualizar(
@@ -75,6 +83,7 @@ def actualizar_cliente(
 def eliminar_cliente(
     cliente_id: int,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
+    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         servicio.eliminar(cliente_id)

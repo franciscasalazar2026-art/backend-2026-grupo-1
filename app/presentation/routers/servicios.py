@@ -1,7 +1,10 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-from app.presentation.dependencies import obtener_servicio_aplicacion
+from app.infrastructure.models.usuario import UsuarioORM
+from app.presentation.dependencies import (
+    obtener_servicio_aplicacion,
+    require_role,
+)
 from app.application.services.servicio_servicio import (
     ServicioAplicacion,
     ServicioNoEncontrado,
@@ -55,6 +58,7 @@ def listar_servicios(
 def crear_servicio(
     datos: ServicioCreate,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
+    _: UsuarioORM = Depends(require_role("admin")),
 ):
     try:
         return servicio.crear(datos.model_dump())
@@ -73,7 +77,7 @@ def obtener_servicio(
     try:
         return servicio.obtener(servicio_id)
     except ServicioNoEncontrado:
-        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+        raise HTTPException(404, detail="Servicio no encontrado.")
 
 
 @router.put("/{servicio_id}", response_model=Servicio)
@@ -81,6 +85,7 @@ def actualizar_servicio(
     servicio_id: int,
     datos: ServicioUpdate,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
+    _: UsuarioORM = Depends(require_role("admin")),
 ):
     try:
         return servicio.actualizar(
@@ -88,11 +93,11 @@ def actualizar_servicio(
             datos.model_dump(exclude_unset=True),
         )
     except ServicioNoEncontrado:
-        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+        raise HTTPException(404, detail="Servicio no encontrado.")
     except ConflictoRepositorio:
         raise HTTPException(status_code=409, detail="Error al actualizar el servicio.")
     except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error))
+        raise HTTPException(422, detail=str(error))
 
 
 @router.delete(
@@ -102,19 +107,21 @@ def actualizar_servicio(
 def eliminar_servicio(
     servicio_id: int,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
+    _: UsuarioORM = Depends(require_role("admin")),
 ):
     try:
         servicio.desactivar(servicio_id)
     except ServicioNoEncontrado:
-        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+        raise HTTPException(404, detail="Servicio no encontrado.")
 
 
 @router.patch("/{servicio_id}/restaurar", response_model=Servicio)
 def restaurar_servicio(
     servicio_id: int,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
+    _: UsuarioORM = Depends(require_role("admin")),
 ):
     try:
         return servicio.restaurar(servicio_id)
     except ServicioNoEncontrado:
-        raise HTTPException(status_code=404, detail="Servicio no encontrado.")
+        raise HTTPException(404, detail="Servicio no encontrado.")

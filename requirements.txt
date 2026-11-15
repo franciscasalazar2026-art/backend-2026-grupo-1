@@ -6,3 +6,5 @@ alembic
 psycopg2-binary
 python-dotenv
 httpx2
+pwdlib[argon2]>=0.2.1
+PyJWT>=2.9.0

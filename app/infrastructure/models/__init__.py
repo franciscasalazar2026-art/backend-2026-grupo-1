@@ -7,6 +7,9 @@ from app.infrastructure.models.profesional_servicio import (
 from app.infrastructure.models.reserva import ReservaORM
 from app.infrastructure.models.detalle_reserva import DetalleReservaORM
 from app.infrastructure.models.cita import CitaORM
+from app.infrastructure.models.usuario import UsuarioORM
+from app.infrastructure.models.refresh_token import RefreshTokenORM
+from app.infrastructure.models.token_recuperacion import TokenRecuperacionUsadoORM
 
 __all__ = [
     "ClienteORM",
@@ -16,4 +19,7 @@ __all__ = [
     "ReservaORM",
     "DetalleReservaORM",
     "CitaORM",
+    "UsuarioORM",
+    "RefreshTokenORM",
+    "TokenRecuperacionUsadoORM",
 ]

@@ -1,21 +1,19 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.presentation.dependencies import obtener_servicio_cita
 from app.application.services.cita_servicio import (
-    CitaServicio,
     CitaNoEncontrada,
+    CitaServicio,
+)
+from app.domain.models import EstadoCita
+from app.presentation.dependencies import obtener_servicio_cita
+from app.presentation.mappers.cita_response_mapper import (
+    CitaResponseMapper,
 )
 from app.presentation.schemas.dtos.cita_dto import (
     Cita,
     CitaCreate,
     CitaUpdate,
 )
-from app.presentation.mappers.cita_response_mapper import (
-    CitaResponseMapper,
-)
-from app.domain.models import EstadoCita
-
 
 router = APIRouter(prefix="/citas", tags=["Citas"])
 
@@ -44,8 +42,7 @@ def listar_citas(
     )
 
     resultado["items"] = [
-        CitaResponseMapper.a_respuesta(item)
-        for item in resultado["items"]
+        CitaResponseMapper.a_respuesta(item) for item in resultado["items"]
     ]
 
     return resultado
@@ -55,6 +52,7 @@ def listar_citas(
     "",
     response_model=Cita,
     status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Conflicto de agenda o de persistencia"}},
 )
 def crear_cita(
     datos: CitaCreate,
@@ -77,7 +75,11 @@ def crear_cita(
         )
 
 
-@router.get("/{cita_id}", response_model=Cita)
+@router.get(
+    "/{cita_id}",
+    response_model=Cita,
+    responses={404: {"description": "Cita no encontrada"}},
+)
 def obtener_cita(
     cita_id: int,
     servicio: CitaServicio = Depends(obtener_servicio_cita),
@@ -93,7 +95,14 @@ def obtener_cita(
         )
 
 
-@router.put("/{cita_id}", response_model=Cita)
+@router.put(
+    "/{cita_id}",
+    response_model=Cita,
+    responses={
+        404: {"description": "Cita no encontrada"},
+        409: {"description": "Conflicto de agenda o de persistencia"},
+    },
+)
 def actualizar_cita(
     cita_id: int,
     datos: CitaUpdate,
@@ -129,6 +138,10 @@ def actualizar_cita(
 @router.delete(
     "/{cita_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Cita no encontrada"},
+        409: {"description": "Conflicto al eliminar la cita"},
+    },
 )
 def eliminar_cita(
     cita_id: int,

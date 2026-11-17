@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.puertos.profesional_repositorio import ConflictoRepositorio
 from app.application.services.cliente_servicio import (
@@ -25,11 +25,16 @@ router = APIRouter(prefix="/clientes", tags=["Clientes"])
     "",
     response_model=RespuestaPaginada[Cliente],
     summary="Listar clientes paginados",
+    responses={401: {"description": "Credenciales ausentes o inválidas"}},
     description="Obtiene el listado paginado de clientes registrados. Requiere estar autenticado.",
 )
 def listar_clientes(
-    limit: int = Query(10, ge=1, le=100, description="Cantidad máxima de registros por página"),
-    offset: int = Query(0, ge=0, description="Cantidad de registros a omitir desde el inicio"),
+    limit: int = Query(
+        10, ge=1, le=100, description="Cantidad máxima de registros por página"
+    ),
+    offset: int = Query(
+        0, ge=0, description="Cantidad de registros a omitir desde el inicio"
+    ),
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
     _: UsuarioORM = Depends(get_current_user),
 ):
@@ -41,6 +46,11 @@ def listar_clientes(
     response_model=Cliente,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un nuevo cliente",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Rol sin permiso"},
+        409: {"description": "Correo duplicado"},
+    },
     description="Crea un nuevo cliente validando unicidad de correo. Requiere rol admin o recepcionista.",
 )
 def crear_cliente(
@@ -58,6 +68,10 @@ def crear_cliente(
     "/{cliente_id}",
     response_model=Cliente,
     summary="Consultar cliente por ID",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        404: {"description": "Cliente no encontrado"},
+    },
     description="Obtiene los datos de un cliente específico mediante su identificador. Requiere autenticación.",
 )
 def obtener_cliente(
@@ -75,6 +89,12 @@ def obtener_cliente(
     "/{cliente_id}",
     response_model=Cliente,
     summary="Actualizar datos de un cliente",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Rol sin permiso"},
+        404: {"description": "Cliente no encontrado"},
+        409: {"description": "Conflicto al actualizar los datos"},
+    },
     description="Modifica los datos de un cliente existente. Requiere rol admin o recepcionista.",
 )
 def actualizar_cliente(
@@ -100,6 +120,12 @@ def actualizar_cliente(
     "/{cliente_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar un cliente",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Rol sin permiso"},
+        404: {"description": "Cliente no encontrado"},
+        409: {"description": "El cliente tiene reservas asociadas"},
+    },
     description="Elimina un cliente si no tiene reservas asociadas. Requiere rol admin o recepcionista.",
 )
 def eliminar_cliente(

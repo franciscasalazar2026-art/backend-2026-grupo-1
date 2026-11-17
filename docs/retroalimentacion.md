@@ -1,0 +1,15 @@
+# Observaciones y comprobaciones del taller
+
+Las filas T corresponden al diagnóstico reproducido sobre `0032403`. La fila R documenta un cambio que el equipo ya había registrado como retroalimentación en GitHub. Para atribuir observaciones al docente se requiere el comentario original.
+
+| ID y observación | Cambio y evidencia | Comprobación y estado |
+| --- | --- | --- |
+| R-01. Errores de API con formatos distintos, correos `.test` y ejemplos de OpenAPI incompletos | Integrado por el equipo en [PR #20](https://github.com/franciscasalazar2026-art/backend-2026-grupo-1/pull/20). Contrato ampliado en `fc504a3`. | `tests/test_clientes.py` cubre correos de prueba y respuestas de error. `tests/test_openapi.py` comprueba rutas, parámetros, modelos, autenticación y estados. **Verificado**. |
+| T-01. Los tests de clientes y escrituras de servicios recibían `401` antes de probar el negocio | Fixtures con login real y rol adecuado en `tests/conftest.py` y regresiones en `576b095`. | Los casos originales vuelven a probar la lógica de negocio. E2E demuestra `401`, `403` y `201` con el mismo cuerpo. **Verificado**. |
+| T-02. Los tests de citas enviaban `fecha_hora` y el contrato vigente exige `fecha` y `hora` | Datos, cambios de estado y aserciones actualizados en `tests/test_citas.py` en `576b095`. | Creación, varios servicios, solapamiento, reprogramación y rollback reproducidos. **Verificado**. |
+| T-03. La prueba de profesionales estaba omitida aunque el router ya estaba disponible | Se reactivó ese caso y se amplió el CRUD y las asignaciones en `tests/test_profesionales.py`, en `576b095`. | Pruebas de creación, consulta, edición, desactivación, restauración y conflictos. **Verificado**. |
+| T-04. Alembic alcanzaba la última revisión sin crear tablas para usuarios y tokens | La revisión `c4d987ee6f20` agrega las tres tablas desde `d287175`. Se prueba la migración con `a463fa7`. | PostgreSQL real desde esquema vacío, claves foráneas, unicidad y persistencia de las sesiones comprobados. **Verificado**. |
+| T-05. La recuperación devolvía el JWT en la respuesta pública de un correo registrado y confirmaba el cambio por partes | `fdd0005` usa un buzón de archivos local, la misma respuesta pública y una transacción que consume el JWT, cambia el hash e invalida sesiones y enlaces anteriores. | E2E verifica igualdad del cuerpo, acceso al buzón, rechazo de reutilización y de enlaces anteriores, y login con la clave nueva. Integración verifica concurrencia y reversión de los cambios si falla la escritura. **Verificado en entorno local**. |
+| T-06. Faltaban los niveles de integración PostgreSQL y E2E, y el reporte base marcaba 49% | Unitarias en `f98d825`, PostgreSQL en `a463fa7` y E2E por HTTP en `25e2a9f`. | 95 casos aprobados y 87,28% de cobertura de líneas en `app`. Comandos y alcance en [pruebas.md](../pruebas.md). **Verificado**. |
+
+El buzón está pensado para cuentas ficticias y para ejecución local. En el despliegue queda pendiente conectar el canal de entrega de recuperación y verificar CI y Kubero.

@@ -15,13 +15,16 @@ API REST con FastAPI y SQLAlchemy para administrar clientes, servicios, profesio
 ## Arquitectura
 
 - `app/main.py` crea la aplicación y registra los routers.
-- `app/routers/` contiene los endpoints de clientes, citas y servicios.
-- `app/schemas/` define los DTO y la validación de entrada y salida.
+- `app/presentation/routers/` contiene los endpoints y las dependencias de autenticación.
+- `app/presentation/schemas/dtos/` define los DTO y la validación de entrada y salida.
+- `app/application/services/` coordina los casos de uso.
+- `app/domain/` contiene entidades y reglas como la política de contraseña.
 - `app/infrastructure/models/` contiene los modelos SQLAlchemy.
+- `app/infrastructure/repositories/` implementa la persistencia y las transacciones.
 - `app/infrastructure/database.py` configura la conexión PostgreSQL desde variables de entorno.
 - `migrations/` contiene las migraciones Alembic.
 - `scripts/seed.py` agrega datos conectados de demostración de forma repetible.
-- `tests/` contiene pruebas aisladas que usan SQLite en memoria.
+- `tests/` incluye unitarias, regresiones con SQLite, integración PostgreSQL y E2E por HTTP.
 - El modelo conceptual y relacional se describe en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md).
 
 ## Requisitos
@@ -32,13 +35,16 @@ API REST con FastAPI y SQLAlchemy para administrar clientes, servicios, profesio
 
 ## Ejecutar con Docker Compose
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio, inicia PostgreSQL y comprueba que esté disponible antes de migrar.
 
 ```powershell
-docker compose up --build -d
+docker compose up -d db
+docker compose exec db pg_isready
+docker compose run --rm --build web alembic upgrade head
+docker compose up -d web
 ```
 
-Compose inicia PostgreSQL y la API. El contenedor de la API aplica `alembic upgrade head` al iniciar. La configuración local de desarrollo usa `postgres` como usuario, contraseña y base de datos por defecto; para otros valores, crea `.env` a partir de `.env.example` y completa `DB_NAME`, `DB_USER` y `DB_PASSWORD`. No subas `.env` ni credenciales reales al repositorio.
+El contenedor inicia Uvicorn. Aplica Alembic explícitamente al crear la base o incorporar una revisión. Compose usa `postgres` como usuario y contraseña y `backend_db` como nombre de base por defecto. Estos valores se configuran mediante `DB_USER`, `DB_PASSWORD` y `DB_NAME` en un `.env` local.
 
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - Esquema OpenAPI: <http://127.0.0.1:8000/openapi.json>
@@ -49,38 +55,44 @@ Para detener los contenedores sin eliminar los datos persistidos:
 docker compose down
 ```
 
-Para eliminar también el volumen local de PostgreSQL, lo que borra sus datos:
-
-```powershell
-docker compose down -v
-```
+Para revisar el arranque usa `docker compose logs web`. El volumen conserva los datos de PostgreSQL.
 
 ## Ejecutar localmente sin Docker
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Completa las cinco variables de `.env` con una base PostgreSQL disponible (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`). Luego aplica las migraciones, agrega los datos de demostración si se necesitan y levanta la API:
+Completa `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD` en `.env`. Configura `JWT_SECRET_KEY` con una clave privada de al menos 32 caracteres. Para ensayar recuperación en local, asigna `RECOVERY_MAIL_DIR` a una carpeta privada fuera del repositorio. Aplica las migraciones antes de iniciar la API.
 
 ```powershell
-alembic upgrade head
-python scripts/seed.py
-uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
+
+La raíz `GET /` comprueba disponibilidad. Para preparar datos de demostración, usa `.\.venv\Scripts\python.exe -m scripts.seed` sobre una base local de desarrollo.
 
 ## Pruebas automatizadas
 
-Las pruebas crean una base SQLite temporal por caso, activan las claves foráneas y reemplazan la sesión de base de datos de la API. No necesitan PostgreSQL ni alteran la base de desarrollo.
+Las unitarias y las regresiones HTTP en memoria se pueden ejecutar sin PostgreSQL.
+
+Las pruebas completas requieren `TEST_POSTGRES_URL` hacia una base PostgreSQL local de pruebas. Cada caso de integración o E2E crea un esquema nuevo, aplica Alembic y elimina ese esquema al terminar. E2E levanta Uvicorn en un puerto local y envía solicitudes por HTTP.
 
 ```powershell
-python -m pytest -q
+$backendPython = '.\.venv\Scripts\python.exe'
+& $backendPython -m pytest -q tests/unit
+& $backendPython -m pytest -q tests --ignore=tests/integration --ignore=tests/e2e
+
+if (-not $env:TEST_POSTGRES_URL) { throw 'Configura TEST_POSTGRES_URL según pruebas.md' }
+& $backendPython -m pytest -q tests/integration
+& $backendPython -m pytest -q tests/e2e
+& $backendPython -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=85
 ```
 
-En la última ejecución local documentada sobre esta rama: **43 aprobadas, 1 omitida y 0 fallidas**. La única omitida corresponde al CRUD HTTP de profesionales, cuyo router aún no está registrado en `app/main.py`. El alcance y el resultado por caso están en [`pruebas.md`](pruebas.md), y la matriz de requisitos está en [`docs/avance-isidora.md`](docs/avance-isidora.md).
+La preparación de PostgreSQL, los casos por nivel y el resultado medido están en [`pruebas.md`](pruebas.md). La tabla de hallazgos y comprobaciones está en [`docs/retroalimentacion.md`](docs/retroalimentacion.md).
 
 ## Endpoints registrados
 
@@ -91,15 +103,20 @@ La documentación interactiva de Swagger muestra los parámetros, DTO y códigos
 | `/clientes` | Listar, crear, consultar por ID, actualizar y eliminar |
 | `/servicios` | Listar, crear, consultar por ID, actualizar, desactivar y restaurar |
 | `/citas` | Listar, crear, consultar por ID, actualizar y eliminar |
+| `/profesionales` | CRUD y asignación de servicios |
+| `/auth` | Registro, login, usuario actual, renovación, logout y recuperación |
 
 Los errores de validación y negocio pueden responder con `400`, `404`, `409` o `422` según el endpoint. El `DELETE` de servicios realiza un borrado lógico.
 
-## Estado y límites de la verificación
+## Flujo de autenticación y recuperación
 
-- La suite cubre CRUD de clientes y servicios; citas y agenda; relaciones y rollback; repetición del seeder; y el contrato OpenAPI.
-- El CRUD HTTP de profesionales sigue pendiente de integración y por eso su prueba está omitida, no aprobada.
-- Las pruebas de integración usan SQLite. La conexión PostgreSQL, migración desde una base vacía y persistencia tras reiniciar Docker requieren verificarse en el entorno del equipo.
-- La matriz [`pruebas.md`](pruebas.md) distingue los resultados ejecutados de las verificaciones pendientes.
+1. `POST /auth/registro` crea una cuenta con rol `cliente` y contraseña de al menos 12 caracteres. Para una demostración local puedes usar `demo@example.com` y una contraseña exclusiva de prueba. Los tests generan sus propios datos y crean el personal autorizado en la base desechable.
+2. `POST /auth/login` devuelve un access JWT y un refresh opaco. Envía `Authorization: Bearer <access_token>` al consultar `/auth/me` o utilizar una operación protegida. Los endpoints de clientes exigen autenticación para lectura y rol `admin` o `recepcionista` para escritura. Las escrituras de servicios requieren `admin`. Una credencial ausente o inválida devuelve `401`. Un rol insuficiente devuelve `403`.
+3. `POST /auth/refresh` rota el refresh y `POST /auth/logout` lo revoca. Ambos reciben `{"refresh_token": "…"}`. El access ya emitido conserva su vigencia hasta expirar salvo que se invalide su versión al cambiar la contraseña.
+4. `POST /auth/forgot-password` recibe `{"email": "demo@example.com"}` y devuelve `200` con el mismo mensaje para ambas situaciones. En el taller, la aplicación deposita el token de una cuenta activa en el buzón local configurado.
+5. `POST /auth/reset-password` recibe `{"token": "…", "nueva_password": "…"}`. Un único cambio confirma el consumo, el nuevo hash y la revocación de las sesiones previas. Reutilizar el mismo JWT devuelve `400` y otro enlace emitido antes del cambio devuelve `401`.
+
+El buzón de archivos sirve para pruebas locales. El transporte de correo para un despliegue, el pipeline de CI y la publicación en Kubero se verifican en la fase de infraestructura. Mantén `.env`, los archivos del buzón y los tokens fuera del repositorio.
 
 ### Flujo de una Solicitud
 `Petición HTTP` ➔ `Router (Presentación)` ➔ `Servicio (Aplicación)` ➔ `Repositorio / ORM (Infraestructura)` ➔ `Base de Datos` ➔ `Respuesta DTO`

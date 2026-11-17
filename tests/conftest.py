@@ -1,5 +1,7 @@
 """Shared isolated database and API fixtures for backend tests."""
 
+# ruff: noqa: E402
+
 import os
 from collections.abc import Iterator
 
@@ -30,6 +32,8 @@ from app.infrastructure.models import (  # noqa: F401
     ReservaORM,
     ServicioORM,
 )
+from app.infrastructure.repositories.usuario_repository import UsuarioRepository
+from app.infrastructure.security import hash_password
 from app.main import app
 
 
@@ -76,6 +80,33 @@ def client(db_engine) -> Iterator[TestClient]:
             yield test_client
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def auth_headers(client, db_session):
+    """Create a disposable user and obtain a signed access token through login."""
+
+    def login_as(rol: str) -> dict[str, str]:
+        email = f"pruebas-{rol}@example.com"
+        password = "Clave de prueba 2026"
+        UsuarioRepository(db_session).crear_usuario(
+            nombre=f"Usuario de prueba {rol}",
+            email=email,
+            password_hash=hash_password(password),
+            rol=rol,
+        )
+        login = client.post("/auth/login", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        assert login.json()["usuario"]["rol"] == rol
+        return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    return login_as
+
+
+@pytest.fixture
+def admin_client(client, auth_headers) -> TestClient:
+    client.headers.update(auth_headers("admin"))
+    return client
 
 
 @pytest.fixture

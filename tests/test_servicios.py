@@ -1,4 +1,3 @@
-
 import pytest
 
 
@@ -14,12 +13,12 @@ def servicio_payload(**overrides):
     return payload
 
 
-def test_create_and_list_servicios(client):
-    created = client.post("/servicios", json=servicio_payload())
+def test_create_and_list_servicios(admin_client):
+    created = admin_client.post("/servicios", json=servicio_payload())
 
     assert created.status_code == 201
 
-    listed = client.get("/servicios")
+    listed = admin_client.get("/servicios")
 
     assert listed.status_code == 200
     # Adaptado a la respuesta paginada estructurada:
@@ -37,34 +36,52 @@ def test_create_and_list_servicios(client):
         {"duracion_minutos": -15},
     ],
 )
-def test_invalid_service_values_return_422(client, changes):
-    response = client.post("/servicios", json=servicio_payload(**changes))
+def test_invalid_service_values_return_422(admin_client, changes):
+    response = admin_client.post("/servicios", json=servicio_payload(**changes))
 
     assert response.status_code == 422
 
 
-def test_get_missing_servicio_returns_not_found(client):
-    response = client.get("/servicios/999999")
+def test_get_missing_servicio_returns_not_found(admin_client):
+    response = admin_client.get("/servicios/999999")
     assert response.status_code == 404
 
 
-def test_update_servicio_and_validate_missing_id(client):
-    created = client.post("/servicios", json=servicio_payload())
+def test_update_servicio_and_validate_missing_id(admin_client):
+    created = admin_client.post("/servicios", json=servicio_payload())
     servicio_id = created.json()["id"]
 
-    updated = client.put(
+    updated = admin_client.put(
         f"/servicios/{servicio_id}",
         json={"precio": "15000.00"},
     )
 
     assert updated.status_code == 200
     assert updated.json()["precio"] == "15000.00"
-    assert client.put("/servicios/999999", json={"precio": "15000.00"}).status_code == 404
+    assert (
+        admin_client.put("/servicios/999999", json={"precio": "15000.00"}).status_code
+        == 404
+    )
 
 
-def test_delete_servicio_and_validate_missing_id(client):
-    created = client.post("/servicios", json=servicio_payload())
+def test_delete_servicio_and_validate_missing_id(admin_client):
+    created = admin_client.post("/servicios", json=servicio_payload())
     servicio_id = created.json()["id"]
 
-    assert client.delete(f"/servicios/{servicio_id}").status_code == 204
-    assert client.delete("/servicios/999999").status_code == 404
+    assert admin_client.delete(f"/servicios/{servicio_id}").status_code == 204
+    assert admin_client.delete("/servicios/999999").status_code == 404
+
+
+def test_restaurar_servicio_returns_it_to_public_catalog(admin_client):
+    created = admin_client.post("/servicios", json=servicio_payload())
+    assert created.status_code == 201, created.text
+    path = f"/servicios/{created.json()['id']}"
+    assert admin_client.delete(path).status_code == 204
+    assert admin_client.get("/servicios").json()["total"] == 0
+
+    restored = admin_client.patch(f"{path}/restaurar")
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["activo"] is True
+    catalog = admin_client.get("/servicios").json()
+    assert [item["id"] for item in catalog["items"]] == [created.json()["id"]]
+    assert admin_client.patch("/servicios/999999/restaurar").status_code == 404

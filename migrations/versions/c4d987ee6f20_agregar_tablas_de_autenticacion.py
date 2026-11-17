@@ -4,9 +4,8 @@ Revision ID: c4d987ee6f20
 Revises: b6d93cba1993
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "c4d987ee6f20"
 down_revision = "b6d93cba1993"
@@ -47,7 +46,9 @@ def upgrade() -> None:
     )
     op.create_index("ix_refresh_tokens_id", "refresh_tokens", ["id"])
     op.create_index("ix_refresh_tokens_usuario_id", "refresh_tokens", ["usuario_id"])
-    op.create_index("ix_refresh_tokens_token_hash", "refresh_tokens", ["token_hash"], unique=True)
+    op.create_index(
+        "ix_refresh_tokens_token_hash", "refresh_tokens", ["token_hash"], unique=True
+    )
     op.create_index("ix_refresh_tokens_familia_id", "refresh_tokens", ["familia_id"])
 
     op.create_table(
@@ -62,9 +63,20 @@ def upgrade() -> None:
         ),
         sa.Column("consumido_en", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index("ix_tokens_recuperacion_usados_id", "tokens_recuperacion_usados", ["id"])
-    op.create_index("ix_tokens_recuperacion_usados_jti", "tokens_recuperacion_usados", ["jti"], unique=True)
-    op.create_index("ix_tokens_recuperacion_usados_usuario_id", "tokens_recuperacion_usados", ["usuario_id"])
+    op.create_index(
+        "ix_tokens_recuperacion_usados_id", "tokens_recuperacion_usados", ["id"]
+    )
+    op.create_index(
+        "ix_tokens_recuperacion_usados_jti",
+        "tokens_recuperacion_usados",
+        ["jti"],
+        unique=True,
+    )
+    op.create_index(
+        "ix_tokens_recuperacion_usados_usuario_id",
+        "tokens_recuperacion_usados",
+        ["usuario_id"],
+    )
 
 
 def downgrade() -> None:

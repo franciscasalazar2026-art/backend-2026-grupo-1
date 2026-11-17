@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class RegistroUsuarioRequest(BaseModel):
@@ -51,4 +51,3 @@ class LoginResponse(TokenResponse):
 
 class MensajeResponse(BaseModel):
     mensaje: str
-    recovery_token_prueba: str | None = None

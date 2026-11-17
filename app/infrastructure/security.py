@@ -1,9 +1,9 @@
-﻿from datetime import datetime, timedelta, timezone
 import hashlib
 import os
 import secrets
-from typing import Any
 import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -22,12 +22,12 @@ password_hasher = PasswordHash((Argon2Hasher(),))
 
 
 def hash_password(password: str) -> str:
-     # Genera un hash Argon2id seguro a partir de una contraseña en texto plano
+    # Genera un hash Argon2id seguro a partir de una contraseña en texto plano
     return password_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-     # Verifica que una contraseña en texto plano coincida con un hash Argon2id almacenado
+    # Verifica que una contraseña en texto plano coincida con un hash Argon2id almacenado
     return password_hasher.verify(plain_password, hashed_password)
 
 
@@ -42,7 +42,7 @@ def create_access_token(
     token_version: int = 1,
     expires_delta: timedelta | None = None,
 ) -> str:
-     # Emite un Access JWT firmado con expiración corta y propósito 'access'
+    # Emite un Access JWT firmado con expiración corta y propósito 'access'
     now = datetime.now(timezone.utc)
     expire = now + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload: dict[str, Any] = {
@@ -59,14 +59,17 @@ def create_access_token(
 def create_recovery_token(
     subject: str | int,
     expires_delta: timedelta | None = None,
+    *,
+    token_version: int = 1,
 ) -> tuple[str, str, datetime]:
-     # Emite un Recovery JWT firmado con expiración corta y propósito 'recovery', devolviendo el token, su jti y fecha de expiración
+    # Emite un Recovery JWT firmado con expiración corta y propósito 'recovery', devolviendo el token, su jti y fecha de expiración
     now = datetime.now(timezone.utc)
     expire = now + (expires_delta or timedelta(minutes=RECOVERY_TOKEN_EXPIRE_MINUTES))
     jti = str(uuid.uuid4())
     payload: dict[str, Any] = {
         "sub": str(subject),
         "jti": jti,
+        "ver": token_version,
         "type": "recovery",
         "iat": now,
         "exp": expire,
@@ -76,7 +79,7 @@ def create_recovery_token(
 
 
 def decode_and_validate_token(token: str, expected_type: str) -> dict[str, Any]:
-     # Decodifica un JWT y valida su propósito y expiración, lanzando ValueError si es inválido
+    # Decodifica un JWT y valida su propósito y expiración, lanzando ValueError si es inválido
     try:
         payload = jwt.decode(
             token,
@@ -94,7 +97,7 @@ def decode_and_validate_token(token: str, expected_type: str) -> dict[str, Any]:
 
 
 def generate_opaque_refresh_token() -> tuple[str, str, datetime]:
-     # Genera un token de refresco opaco seguro, su hash y fecha de expiración
+    # Genera un token de refresco opaco seguro, su hash y fecha de expiración
     raw_token = secrets.token_urlsafe(48)
     hashed = hash_token(raw_token)
     expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)

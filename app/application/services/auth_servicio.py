@@ -1,8 +1,9 @@
-﻿from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from app.domain.rules.politica_contrasena import validar_politica_contrasena
 from app.infrastructure.models.usuario import UsuarioORM
+from app.infrastructure.recovery_mail import deliver_recovery_token
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 from app.infrastructure.security import (
     create_access_token,
@@ -36,7 +37,9 @@ class AuthServicio:
             raise AuthError(str(exc), status_code=422) from exc
 
         if self.repo.obtener_por_email(email):
-            raise AuthError("El correo electrónico ya está registrado.", status_code=409)
+            raise AuthError(
+                "El correo electrónico ya está registrado.", status_code=409
+            )
 
         password_hashed = hash_password(password)
         # Por seguridad (5.5), el registro público siempre asigna el rol base 'cliente'
@@ -61,11 +64,17 @@ class AuthServicio:
                     status_code=429,
                 )
 
-        if not usuario or not usuario.activo or not verify_password(password, usuario.password_hash):
+        if (
+            not usuario
+            or not usuario.activo
+            or not verify_password(password, usuario.password_hash)
+        ):
             if usuario:
                 usuario.intentos_fallidos += 1
                 if usuario.intentos_fallidos >= MAX_INTENTOS_LOGIN:
-                    usuario.bloqueado_hasta = ahora + timedelta(minutes=MINUTOS_BLOQUEO_LOGIN)
+                    usuario.bloqueado_hasta = ahora + timedelta(
+                        minutes=MINUTOS_BLOQUEO_LOGIN
+                    )
                 self.repo.actualizar_usuario(usuario)
             # Mensaje genérico exigido en 5.5
             raise AuthError("Credenciales inválidas.", status_code=401)
@@ -160,9 +169,11 @@ class AuthServicio:
         if not usuario or not usuario.activo:
             return respuesta_generica
 
-        token_rec, _, _ = create_recovery_token(subject=usuario.id)
-        # En entorno de prueba/desarrollo retornamos el token para verificación controlada (5.6)
-        respuesta_generica["recovery_token_prueba"] = token_rec
+        token, jti, _ = create_recovery_token(
+            subject=usuario.id,
+            token_version=usuario.token_version,
+        )
+        deliver_recovery_token(usuario.email, token, jti)
         return respuesta_generica
 
     def restablecer_contrasena(self, recovery_token: str, nueva_password: str) -> None:
@@ -172,28 +183,36 @@ class AuthServicio:
             raise AuthError(str(exc), status_code=422) from exc
 
         try:
-            payload = decode_and_validate_token(recovery_token, expected_type="recovery")
+            payload = decode_and_validate_token(
+                recovery_token, expected_type="recovery"
+            )
         except ValueError as exc:
             raise AuthError(str(exc), status_code=401) from exc
 
-        jti = payload.get("jti")
-        sub = payload.get("sub")
-        if not jti or not sub:
+        try:
+            jti = str(uuid.UUID(payload["jti"]))
+            usuario_id = int(payload["sub"])
+            version = payload["ver"]
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise AuthError(
+                "Token de recuperación malformado.", status_code=401
+            ) from exc
+        if usuario_id <= 0 or type(version) is not int or version <= 0:
             raise AuthError("Token de recuperación malformado.", status_code=401)
 
-        if self.repo.jti_ya_consumido(jti):
-            raise AuthError("Este enlace de recuperación ya fue utilizado.", status_code=400)
-
-        usuario = self.repo.obtener_por_id(int(sub))
-        if not usuario or not usuario.activo:
+        resultado = self.repo.consumir_recuperacion(
+            usuario_id=usuario_id,
+            version=version,
+            jti=jti,
+            password_hash=hash_password(nueva_password),
+        )
+        if resultado == "consumido":
+            raise AuthError(
+                "Este enlace de recuperación ya fue utilizado.", status_code=400
+            )
+        if resultado == "usuario_invalido":
             raise AuthError("Usuario no válido.", status_code=404)
-
-        # Actualizar hash, invalidar access tokens antiguos (token_version) y revocar refresh tokens
-        usuario.password_hash = hash_password(nueva_password)
-        usuario.token_version += 1
-        usuario.intentos_fallidos = 0
-        usuario.bloqueado_hasta = None
-        self.repo.actualizar_usuario(usuario)
-
-        self.repo.marcar_jti_consumido(jti=jti, usuario_id=usuario.id)
-        self.repo.revocar_todas_sesiones_usuario(usuario_id=usuario.id)
+        if resultado == "desactualizado":
+            raise AuthError(
+                "Este enlace de recuperación ya no es válido.", status_code=401
+            )

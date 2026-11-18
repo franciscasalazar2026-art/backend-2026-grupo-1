@@ -1,19 +1,17 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-from app.presentation.dependencies import obtener_servicio_profesional
 from app.application.services.profesional_servicio import (
-    ServicioProfesional,
-    ProfesionalNoEncontrado,
     ProfesionalInactivo,
+    ProfesionalNoEncontrado,
     ServicioNoEncontrado,
+    ServicioProfesional,
 )
+from app.presentation.dependencies import obtener_servicio_profesional
 from app.presentation.schemas.dtos.profesional_dto import (
     Profesional,
     ProfesionalCreate,
     ProfesionalUpdate,
 )
-
 from app.presentation.schemas.dtos.respuesta_paginada import (
     RespuestaPaginada,
 )
@@ -24,12 +22,17 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=RespuestaPaginada[Profesional])
+@router.get(
+    "",
+    response_model=RespuestaPaginada[Profesional],
+    summary="Listar profesionales paginados",
+    description="Obtiene un listado paginado de profesionales con búsqueda por nombre o especialidad y filtro de activos.",
+)
 def listar_profesionales(
-    buscar: str | None = Query(None),
-    solo_activos: bool = Query(True),
-    pagina: int = Query(1, ge=1),
-    limite: int = Query(10, ge=1, le=100),
+    buscar: str | None = Query(None, description="Texto a buscar en nombre o especialidad"),
+    solo_activos: bool = Query(True, description="Si es verdadero, retorna únicamente profesionales activos"),
+    pagina: int = Query(1, ge=1, description="Número de página (inicia en 1)"),
+    limite: int = Query(10, ge=1, le=100, description="Cantidad de elementos por página"),
     servicio: ServicioProfesional = Depends(obtener_servicio_profesional),
 ):
     return servicio.listar(
@@ -44,6 +47,9 @@ def listar_profesionales(
     "",
     response_model=Profesional,
     status_code=status.HTTP_201_CREATED,
+    summary="Registrar un nuevo profesional",
+    responses={409: {"description": "Correo electrónico ya registrado o conflicto de datos"}},
+    description="Crea un nuevo profesional en el sistema.",
 )
 def crear_profesional(
     datos: ProfesionalCreate,
@@ -55,7 +61,13 @@ def crear_profesional(
         raise HTTPException(status_code=409, detail=str(error))
 
 
-@router.get("/{profesional_id}", response_model=Profesional)
+@router.get(
+    "/{profesional_id}",
+    response_model=Profesional,
+    summary="Obtener detalle de un profesional",
+    responses={404: {"description": "Profesional no encontrado"}},
+    description="Consulta los datos de un profesional específico por su ID.",
+)
 def obtener_profesional(
     profesional_id: int,
     servicio: ServicioProfesional = Depends(obtener_servicio_profesional),
@@ -66,7 +78,16 @@ def obtener_profesional(
         raise HTTPException(status_code=404, detail="Profesional no encontrado.")
 
 
-@router.put("/{profesional_id}", response_model=Profesional)
+@router.put(
+    "/{profesional_id}",
+    response_model=Profesional,
+    summary="Actualizar un profesional",
+    responses={
+        404: {"description": "Profesional no encontrado"},
+        409: {"description": "Conflicto de datos al actualizar"},
+    },
+    description="Actualiza los datos de un profesional existente.",
+)
 def actualizar_profesional(
     profesional_id: int,
     datos: ProfesionalUpdate,
@@ -87,6 +108,9 @@ def actualizar_profesional(
 @router.delete(
     "/{profesional_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Desactivar un profesional",
+    responses={404: {"description": "Profesional no encontrado"}},
+    description="Realiza un borrado lógico del profesional marcándolo como inactivo.",
 )
 def eliminar_profesional(
     profesional_id: int,
@@ -101,6 +125,9 @@ def eliminar_profesional(
 @router.patch(
     "/{profesional_id}/restaurar",
     response_model=Profesional,
+    summary="Restaurar un profesional desactivado",
+    responses={404: {"description": "Profesional no encontrado"}},
+    description="Reactiva un profesional previamente desactivado.",
 )
 def restaurar_profesional(
     profesional_id: int,
@@ -112,7 +139,12 @@ def restaurar_profesional(
         raise HTTPException(status_code=404, detail="Profesional no encontrado.")
 
 
-@router.get("/{profesional_id}/servicios")
+@router.get(
+    "/{profesional_id}/servicios",
+    summary="Listar servicios asignados a un profesional",
+    responses={404: {"description": "Profesional no encontrado"}},
+    description="Obtiene el listado de servicios habilitados para un profesional específico.",
+)
 def listar_servicios_profesional(
     profesional_id: int,
     servicio: ServicioProfesional = Depends(obtener_servicio_profesional),
@@ -126,6 +158,12 @@ def listar_servicios_profesional(
 @router.post(
     "/{profesional_id}/servicios",
     status_code=status.HTTP_201_CREATED,
+    summary="Asignar un servicio a un profesional",
+    responses={
+        404: {"description": "Profesional o servicio no encontrado o inactivo"},
+        409: {"description": "El servicio ya estaba asignado al profesional"},
+    },
+    description="Asocia un servicio activo del catálogo a un profesional activo.",
 )
 def asignar_servicio(
     profesional_id: int,

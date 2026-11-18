@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.puertos.profesional_repositorio import ConflictoRepositorio
 from app.application.services.servicio_servicio import (
     ServicioAplicacion,
     ServicioNoEncontrado,
 )
-from app.infrastructure.models.usuario import UsuarioORM
+from app.domain.models import UsuarioAutenticado
 from app.presentation.dependencies import (
     obtener_servicio_aplicacion,
     require_role,
@@ -78,7 +78,7 @@ def listar_servicios(
 def crear_servicio(
     datos: ServicioCreate,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
-    _: UsuarioORM = Depends(require_role("admin")),
+    _: UsuarioAutenticado = Depends(require_role("admin")),
 ):
     try:
         return servicio.crear(datos.model_dump())
@@ -122,7 +122,7 @@ def actualizar_servicio(
     servicio_id: int,
     datos: ServicioUpdate,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
-    _: UsuarioORM = Depends(require_role("admin")),
+    _: UsuarioAutenticado = Depends(require_role("admin")),
 ):
     try:
         return servicio.actualizar(
@@ -151,7 +151,7 @@ def actualizar_servicio(
 def eliminar_servicio(
     servicio_id: int,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
-    _: UsuarioORM = Depends(require_role("admin")),
+    _: UsuarioAutenticado = Depends(require_role("admin")),
 ):
     try:
         servicio.desactivar(servicio_id)
@@ -173,7 +173,7 @@ def eliminar_servicio(
 def restaurar_servicio(
     servicio_id: int,
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
-    _: UsuarioORM = Depends(require_role("admin")),
+    _: UsuarioAutenticado = Depends(require_role("admin")),
 ):
     try:
         return servicio.restaurar(servicio_id)

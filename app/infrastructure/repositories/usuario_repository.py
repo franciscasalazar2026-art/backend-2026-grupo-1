@@ -1,5 +1,7 @@
-﻿from datetime import datetime, timezone
-from sqlalchemy import update
+from datetime import datetime, timezone
+from typing import Literal
+
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.infrastructure.models.refresh_token import RefreshTokenORM
@@ -86,15 +88,6 @@ class UsuarioRepository:
         )
         self.db.commit()
 
-    def revocar_todas_sesiones_usuario(self, usuario_id: int) -> None:
-        self.db.execute(
-            update(RefreshTokenORM)
-            .where(RefreshTokenORM.usuario_id == usuario_id)
-            .values(revocado=True)
-        )
-        self.db.commit()
-
-    # --- Gestión de Tokens de Recuperación (Uso Único) ---
     def jti_ya_consumido(self, jti: str) -> bool:
         existe = (
             self.db.query(TokenRecuperacionUsadoORM)
@@ -103,11 +96,39 @@ class UsuarioRepository:
         )
         return existe is not None
 
-    def marcar_jti_consumido(self, jti: str, usuario_id: int) -> None:
-        registro = TokenRecuperacionUsadoORM(
-            jti=jti,
-            usuario_id=usuario_id,
-            consumido_en=datetime.now(timezone.utc),
-        )
-        self.db.add(registro)
-        self.db.commit()
+    def consumir_recuperacion(
+        self,
+        usuario_id: int,
+        version: int,
+        jti: str,
+        password_hash: str,
+    ) -> Literal["actualizado", "consumido", "usuario_invalido", "desactualizado"]:
+        with self.db.begin():
+            # Serializa restablecimientos del mismo usuario incluso con distintos JWT.
+            usuario = self.db.scalar(
+                select(UsuarioORM).where(UsuarioORM.id == usuario_id).with_for_update()
+            )
+            if usuario is None or not usuario.activo:
+                return "usuario_invalido"
+            if self.jti_ya_consumido(jti):
+                return "consumido"
+            if usuario.token_version != version:
+                return "desactualizado"
+
+            usuario.password_hash = password_hash
+            usuario.token_version += 1
+            usuario.intentos_fallidos = 0
+            usuario.bloqueado_hasta = None
+            self.db.add(
+                TokenRecuperacionUsadoORM(
+                    jti=jti,
+                    usuario_id=usuario_id,
+                    consumido_en=datetime.now(timezone.utc),
+                )
+            )
+            self.db.execute(
+                update(RefreshTokenORM)
+                .where(RefreshTokenORM.usuario_id == usuario_id)
+                .values(revocado=True)
+            )
+        return "actualizado"

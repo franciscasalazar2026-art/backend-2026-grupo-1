@@ -1,22 +1,38 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta
 
 import pytest
 from sqlalchemy import event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.models import CitaORM, ReservaORM
+from app.infrastructure.models import (
+    CitaORM,
+    ClienteORM,
+    DetalleReservaORM,
+    ProfesionalORM,
+    ProfesionalServicioORM,
+    ReservaORM,
+    ServicioORM,
+)
 
-def cita_payload(agenda_ids, **overrides):
+
+def horario_futuro(dias=3):
+    return datetime.combine(datetime.now().date() + timedelta(days=dias), time(10))
+
+
+def cita_payload(agenda_ids, *, inicio=None, **overrides):
+    inicio = inicio or horario_futuro()
     payload = {
         "cliente_id": agenda_ids["cliente_id"],
         "servicio_id": agenda_ids["servicio_id"],
         "profesional_id": agenda_ids["profesional_id"],
-        "fecha_hora": (datetime.now(timezone.utc) + timedelta(days=3)).isoformat(),
+        "fecha": inicio.date().isoformat(),
+        "hora": inicio.time().isoformat(),
         "motivo": "Prueba de agenda",
     }
     payload.update(overrides)
     return payload
+
 
 def test_create_cita_creates_reserva_and_cita(client, agenda_ids, db_session):
     response = client.post("/citas", json=cita_payload(agenda_ids))
@@ -26,16 +42,100 @@ def test_create_cita_creates_reserva_and_cita(client, agenda_ids, db_session):
     assert db_session.scalar(select(func.count(ReservaORM.id))) == 1
     assert db_session.scalar(select(func.count(CitaORM.id))) == 1
 
+
+def test_cita_schedules_multiple_services_in_order(client, agenda_ids, db_session):
+    second_service = ServicioORM(
+        nombre="Pedicure de prueba",
+        duracion_minutos=30,
+        precio="8000.00",
+        activo=True,
+    )
+    db_session.add(second_service)
+    db_session.flush()
+    db_session.add(
+        ProfesionalServicioORM(
+            profesional_id=agenda_ids["profesional_id"], servicio_id=second_service.id
+        )
+    )
+    db_session.commit()
+    start = horario_futuro()
+    payload = {
+        "cliente_id": agenda_ids["cliente_id"],
+        "fecha": start.date().isoformat(),
+        "hora": start.time().isoformat(),
+        "motivo": "Reserva con dos servicios",
+        "servicios": [
+            {
+                "servicio_id": service_id,
+                "profesional_id": agenda_ids["profesional_id"],
+            }
+            for service_id in (agenda_ids["servicio_id"], second_service.id)
+        ],
+    }
+
+    created = client.post("/citas", json=payload)
+
+    assert created.status_code == 201, created.text
+    response = created.json()
+    details = response["servicios"]
+    assert response["servicio_id"] is None
+    assert [detail["servicio_id"] for detail in details] == [
+        agenda_ids["servicio_id"],
+        second_service.id,
+    ]
+    assert [detail["hora_inicio"] for detail in details] == ["10:00:00", "10:45:00"]
+    assert db_session.scalar(select(func.count(DetalleReservaORM.id))) == 2
+
+    updated = client.put(f"/citas/{response['id']}", json={"hora": "12:00:00"})
+    assert updated.status_code == 200, updated.text
+    assert [detail["hora_inicio"] for detail in updated.json()["servicios"]] == [
+        "12:00:00",
+        "12:45:00",
+    ]
+
+
+def test_reschedule_conflict_keeps_original_appointment_time(client, agenda_ids):
+    start = horario_futuro()
+    original = client.post("/citas", json=cita_payload(agenda_ids, inicio=start))
+    another = client.post(
+        "/citas", json=cita_payload(agenda_ids, inicio=start + timedelta(hours=1))
+    )
+    assert original.status_code == another.status_code == 201
+    path = f"/citas/{another.json()['id']}"
+
+    rescheduled = client.put(path, json={"hora": "10:15:00"})
+
+    assert rescheduled.status_code == 409, rescheduled.text
+    assert client.get(path).json()["hora"] == "11:00:00"
+
+
+def test_cancelled_appointment_releases_its_time_slot(client, agenda_ids):
+    payload = cita_payload(agenda_ids)
+    created = client.post("/citas", json=payload)
+    assert created.status_code == 201, created.text
+    cancelled = client.put(
+        f"/citas/{created.json()['id']}", json={"estado": "cancelada"}
+    )
+    assert cancelled.status_code == 200, cancelled.text
+
+    new_booking = client.post("/citas", json=payload)
+
+    assert new_booking.status_code == 201, new_booking.text
+    assert new_booking.json()["id"] != created.json()["id"]
+
+
 def test_invalid_cita_date_returns_422(client, agenda_ids):
     response = client.post(
         "/citas",
-        json=cita_payload(agenda_ids, fecha_hora="not-a-date"),
+        json=cita_payload(agenda_ids, fecha="not-a-date"),
     )
 
     assert response.status_code == 422
 
+
 def test_missing_cita_returns_404(client):
     assert client.get("/citas/999999").status_code == 404
+
 
 def test_list_citas_filters_orders_and_paginates(client, agenda_ids):
     for day in (2, 5):
@@ -43,7 +143,7 @@ def test_list_citas_filters_orders_and_paginates(client, agenda_ids):
             "/citas",
             json=cita_payload(
                 agenda_ids,
-                fecha_hora=(datetime.now(timezone.utc) + timedelta(days=day)).isoformat(),
+                inicio=horario_futuro(day),
             ),
         )
         assert response.status_code == 201
@@ -56,13 +156,17 @@ def test_list_citas_filters_orders_and_paginates(client, agenda_ids):
     assert response.json()["total"] == 2
     assert len(response.json()["items"]) == 1
     assert response.json()["pagina"] == 1
+    assert response.json()["items"][0]["fecha"] == horario_futuro(5).date().isoformat()
+
 
 def test_past_cita_is_rejected(client, agenda_ids):
-    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    past = horario_futuro(-1)
 
-    assert client.post(
-        "/citas", json=cita_payload(agenda_ids, fecha_hora=past)
-    ).status_code == 422
+    assert (
+        client.post("/citas", json=cita_payload(agenda_ids, inicio=past)).status_code
+        == 422
+    )
+
 
 def test_failure_after_reservation_flush_rolls_back_both_records(
     client, agenda_ids, db_session
@@ -83,15 +187,15 @@ def test_failure_after_reservation_flush_rolls_back_both_records(
     assert db_session.scalar(select(func.count(ReservaORM.id))) == 0
     assert db_session.scalar(select(func.count(CitaORM.id))) == 0
 
-def test_overlapping_cita_for_same_professional_returns_conflict(
-    client, agenda_ids
-):
-    start = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
-    first = client.post("/citas", json=cita_payload(agenda_ids, fecha_hora=start))
-    second = client.post("/citas", json=cita_payload(agenda_ids, fecha_hora=start))
+
+def test_overlapping_cita_for_same_professional_returns_conflict(client, agenda_ids):
+    start = horario_futuro()
+    first = client.post("/citas", json=cita_payload(agenda_ids, inicio=start))
+    second = client.post("/citas", json=cita_payload(agenda_ids, inicio=start))
 
     assert first.status_code == 201
     assert second.status_code == 409
+
 
 @pytest.mark.parametrize(
     ("estado_nuevo", "codigo_esperado"),
@@ -114,6 +218,7 @@ def test_transiciones_permitidas_desde_pendiente(
     assert response.status_code == codigo_esperado
     assert response.json()["estado"] == estado_nuevo
 
+
 def test_transicion_confirmada_a_completada(client, agenda_ids):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
     cita_id = creada.json()["id"]
@@ -132,6 +237,7 @@ def test_transicion_confirmada_a_completada(client, agenda_ids):
     assert completada.status_code == 200
     assert completada.json()["estado"] == "completada"
 
+
 @pytest.mark.parametrize(
     ("estados_previos", "estado_nuevo"),
     [
@@ -139,9 +245,7 @@ def test_transicion_confirmada_a_completada(client, agenda_ids):
         (["confirmada", "completada"], "pendiente"),
     ],
 )
-def test_transiciones_no_permitidas(
-    client, agenda_ids, estados_previos, estado_nuevo
-):
+def test_transiciones_no_permitidas(client, agenda_ids, estados_previos, estado_nuevo):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
     cita_id = creada.json()["id"]
 
@@ -157,22 +261,22 @@ def test_transiciones_no_permitidas(
         json={"estado": estado_nuevo},
     )
 
-    assert response.status_code == 400, response.text
+    assert response.status_code == 422, response.text
+
 
 def test_actualizar_cita_a_fecha_pasada_es_rechazado(client, agenda_ids):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
     cita_id = creada.json()["id"]
 
-    pasada = (
-        datetime.now(timezone.utc) - timedelta(days=1)
-    ).isoformat()
+    pasada = horario_futuro(-1).date().isoformat()
 
     response = client.put(
         f"/citas/{cita_id}",
-        json={"fecha_hora": pasada},
+        json={"fecha": pasada},
     )
 
     assert response.status_code == 422
+
 
 def test_obtener_cita_existente(client, agenda_ids):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
@@ -182,6 +286,7 @@ def test_obtener_cita_existente(client, agenda_ids):
 
     assert response.status_code == 200
     assert response.json()["id"] == cita_id
+
 
 def test_actualizar_motivo_cita(client, agenda_ids):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
@@ -195,6 +300,7 @@ def test_actualizar_motivo_cita(client, agenda_ids):
     assert response.status_code == 200
     assert response.json()["motivo"] == "Consulta de seguimiento"
 
+
 def test_eliminar_cita(client, agenda_ids):
     creada = client.post("/citas", json=cita_payload(agenda_ids))
     cita_id = creada.json()["id"]
@@ -206,10 +312,12 @@ def test_eliminar_cita(client, agenda_ids):
     consulta = client.get(f"/citas/{cita_id}")
     assert consulta.status_code == 404
 
+
 def test_eliminar_cita_inexistente(client):
     response = client.delete("/citas/999999")
 
     assert response.status_code == 404
+
 
 def test_servicio_inexistente_retorna_error(client, agenda_ids):
     payload = cita_payload(agenda_ids)
@@ -217,7 +325,8 @@ def test_servicio_inexistente_retorna_error(client, agenda_ids):
 
     response = client.post("/citas", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+
 
 def test_profesional_inexistente_retorna_error(client, agenda_ids):
     payload = cita_payload(agenda_ids)
@@ -225,13 +334,12 @@ def test_profesional_inexistente_retorna_error(client, agenda_ids):
 
     response = client.post("/citas", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+
 
 def test_profesional_sin_asignacion_al_servicio_retorna_error(
     client, agenda_ids, db_session
 ):
-    from app.infrastructure.models import ProfesionalORM
-
     otro_profesional = ProfesionalORM(
         nombre="Profesional sin asignación",
         especialidad="Estética",
@@ -248,51 +356,45 @@ def test_profesional_sin_asignacion_al_servicio_retorna_error(
 
     response = client.post("/citas", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+
 
 def test_cliente_inactivo_no_puede_crear_cita(client, agenda_ids, db_session):
-    from app.infrastructure.models import ClienteORM
-
     cliente = db_session.get(ClienteORM, agenda_ids["cliente_id"])
     cliente.activo = False
     db_session.commit()
 
     response = client.post("/citas", json=cita_payload(agenda_ids))
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+
 
 def test_servicio_inactivo_no_puede_crear_cita(client, agenda_ids, db_session):
-    from app.infrastructure.models import ServicioORM
-
     servicio = db_session.get(ServicioORM, agenda_ids["servicio_id"])
     servicio.activo = False
     db_session.commit()
 
     response = client.post("/citas", json=cita_payload(agenda_ids))
 
-    assert response.status_code == 400
+    assert response.status_code == 422
 
-def test_profesional_inactivo_no_puede_crear_cita(
-    client, agenda_ids, db_session
-):
-    from app.infrastructure.models import ProfesionalORM
 
-    profesional = db_session.get(
-        ProfesionalORM, agenda_ids["profesional_id"]
-    )
+def test_profesional_inactivo_no_puede_crear_cita(client, agenda_ids, db_session):
+    profesional = db_session.get(ProfesionalORM, agenda_ids["profesional_id"])
     profesional.activo = False
     db_session.commit()
 
     response = client.post("/citas", json=cita_payload(agenda_ids))
 
-    assert response.status_code == 400
+    assert response.status_code == 422
+
 
 def test_solapamiento_parcial_de_citas_retorna_conflicto(client, agenda_ids):
-    inicio = datetime.now(timezone.utc) + timedelta(days=3)
+    inicio = horario_futuro()
 
     primera = client.post(
         "/citas",
-        json=cita_payload(agenda_ids, fecha_hora=inicio.isoformat()),
+        json=cita_payload(agenda_ids, inicio=inicio),
     )
     assert primera.status_code == 201
 
@@ -302,11 +404,12 @@ def test_solapamiento_parcial_de_citas_retorna_conflicto(client, agenda_ids):
         "/citas",
         json=cita_payload(
             agenda_ids,
-            fecha_hora=(inicio + timedelta(minutes=15)).isoformat(),
+            inicio=inicio + timedelta(minutes=15),
         ),
     )
 
     assert segunda.status_code == 409
+
 
 def test_cliente_inexistente_no_puede_crear_cita(client, agenda_ids):
     payload = cita_payload(agenda_ids)
@@ -314,4 +417,4 @@ def test_cliente_inexistente_no_puede_crear_cita(client, agenda_ids):
 
     response = client.post("/citas", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 422

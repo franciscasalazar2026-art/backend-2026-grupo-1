@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.puertos.profesional_repositorio import ConflictoRepositorio
 from app.application.services.servicio_servicio import (
@@ -27,12 +27,24 @@ router = APIRouter(prefix="/servicios", tags=["Servicios"])
     description="Obtiene un listado paginado de servicios con búsqueda por texto, filtro de activos y ordenamiento validado.",
 )
 def listar_servicios(
-    buscar: str | None = Query(None, description="Texto a buscar en nombre o descripción del servicio"),
-    solo_activos: bool = Query(True, description="Si es verdadero, retorna únicamente servicios activos"),
-    ordenar_por: str = Query("precio", description="Campo de ordenamiento permitido: nombre, precio o id"),
-    direccion: str = Query("asc", pattern="^(asc|desc)$", description="Dirección del ordenamiento: asc o desc"),
+    buscar: str | None = Query(
+        None, description="Texto a buscar en nombre o descripción del servicio"
+    ),
+    solo_activos: bool = Query(
+        True, description="Si es verdadero, retorna únicamente servicios activos"
+    ),
+    ordenar_por: str = Query(
+        "precio", description="Campo de ordenamiento permitido: nombre, precio o id"
+    ),
+    direccion: str = Query(
+        "asc",
+        pattern="^(asc|desc)$",
+        description="Dirección del ordenamiento: asc o desc",
+    ),
     pagina: int = Query(1, ge=1, description="Número de página (inicia en 1)"),
-    limite: int = Query(10, ge=1, le=100, description="Cantidad de elementos por página"),
+    limite: int = Query(
+        10, ge=1, le=100, description="Cantidad de elementos por página"
+    ),
     servicio: ServicioAplicacion = Depends(obtener_servicio_aplicacion),
 ):
     if ordenar_por not in {"nombre", "precio", "id"}:
@@ -56,6 +68,11 @@ def listar_servicios(
     response_model=Servicio,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un nuevo servicio",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Se requiere rol admin"},
+        409: {"description": "Conflicto al crear el servicio"},
+    },
     description="Registra un nuevo servicio en el catálogo. Requiere autenticación con rol admin.",
 )
 def crear_servicio(
@@ -76,6 +93,7 @@ def crear_servicio(
     "/{servicio_id}",
     response_model=Servicio,
     summary="Obtener detalle de un servicio",
+    responses={404: {"description": "Servicio no encontrado"}},
     description="Consulta la información completa de un servicio específico mediante su ID.",
 )
 def obtener_servicio(
@@ -92,6 +110,12 @@ def obtener_servicio(
     "/{servicio_id}",
     response_model=Servicio,
     summary="Actualizar un servicio",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Se requiere rol admin"},
+        404: {"description": "Servicio no encontrado"},
+        409: {"description": "Conflicto al actualizar el servicio"},
+    },
     description="Modifica los datos de un servicio existente. Requiere autenticación con rol admin.",
 )
 def actualizar_servicio(
@@ -117,6 +141,11 @@ def actualizar_servicio(
     "/{servicio_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Desactivar un servicio",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Se requiere rol admin"},
+        404: {"description": "Servicio no encontrado"},
+    },
     description="Realiza un borrado lógico del servicio marcándolo como inactivo. Requiere rol admin.",
 )
 def eliminar_servicio(
@@ -134,6 +163,11 @@ def eliminar_servicio(
     "/{servicio_id}/restaurar",
     response_model=Servicio,
     summary="Restaurar un servicio desactivado",
+    responses={
+        401: {"description": "Credenciales ausentes o inválidas"},
+        403: {"description": "Se requiere rol admin"},
+        404: {"description": "Servicio no encontrado"},
+    },
     description="Reactiva un servicio previamente desactivado. Requiere autenticación con rol admin.",
 )
 def restaurar_servicio(

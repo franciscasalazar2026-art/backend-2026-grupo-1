@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.application.services.auth_servicio import AuthError, AuthServicio
 from app.infrastructure.models.usuario import UsuarioORM
@@ -24,6 +24,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticación y Seguridad"])
     response_model=UsuarioResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un nuevo usuario",
+    responses={409: {"description": "Correo registrado"}},
 )
 def registrar_usuario(
     datos: RegistroUsuarioRequest,
@@ -43,6 +44,10 @@ def registrar_usuario(
     "/login",
     response_model=LoginResponse,
     summary="Iniciar sesión y obtener Access + Refresh tokens",
+    responses={
+        401: {"description": "Credenciales inválidas"},
+        429: {"description": "Bloqueo temporal tras intentos fallidos"},
+    },
 )
 def iniciar_sesion(
     datos: LoginRequest,
@@ -58,6 +63,7 @@ def iniciar_sesion(
     "/me",
     response_model=UsuarioResponse,
     summary="Obtener perfil del usuario autenticado",
+    responses={401: {"description": "Access JWT ausente, inválido o revocado"}},
 )
 def obtener_usuario_actual(
     usuario_actual: UsuarioORM = Depends(get_current_user),
@@ -69,6 +75,9 @@ def obtener_usuario_actual(
     "/refresh",
     response_model=TokenResponse,
     summary="Renovar Access JWT rotando el Refresh Token",
+    responses={
+        401: {"description": "Refresh inválido, expirado, revocado o reutilizado"}
+    },
 )
 def renovar_tokens(
     datos: RefreshRequest,
@@ -97,6 +106,7 @@ def cerrar_sesion(
     "/forgot-password",
     response_model=MensajeResponse,
     summary="Solicitar enlace/token de recuperación de contraseña",
+    description="Responde con el mismo mensaje exista o no la cuenta. El token se entrega por el canal configurado.",
 )
 def solicitar_recuperacion(
     datos: ForgotPasswordRequest,
@@ -110,6 +120,11 @@ def solicitar_recuperacion(
     "/reset-password",
     response_model=MensajeResponse,
     summary="Restablecer contraseña con JWT de propósito exclusivo y uso único",
+    responses={
+        400: {"description": "Enlace ya usado"},
+        401: {"description": "Token inválido, expirado o reemplazado"},
+        404: {"description": "Usuario no válido"},
+    },
 )
 def restablecer_contrasena(
     datos: ResetPasswordRequest,

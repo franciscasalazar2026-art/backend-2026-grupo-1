@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.puertos.profesional_repositorio import ConflictoRepositorio
 from app.application.services.cliente_servicio import (
     ClienteNoEncontrado,
     ClienteServicio,
 )
-from app.infrastructure.models.usuario import UsuarioORM
+from app.domain.models import UsuarioAutenticado
 from app.presentation.dependencies import (
     get_current_user,
     obtener_servicio_cliente,
@@ -36,7 +36,7 @@ def listar_clientes(
         0, ge=0, description="Cantidad de registros a omitir desde el inicio"
     ),
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
-    _: UsuarioORM = Depends(get_current_user),
+    _: UsuarioAutenticado = Depends(get_current_user),
 ):
     return servicio.listar(limite=limit, desplazamiento=offset)
 
@@ -56,7 +56,7 @@ def listar_clientes(
 def crear_cliente(
     datos: ClienteCreate,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
-    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
+    _: UsuarioAutenticado = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         return servicio.crear(datos.model_dump())
@@ -77,7 +77,7 @@ def crear_cliente(
 def obtener_cliente(
     cliente_id: int,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
-    _: UsuarioORM = Depends(get_current_user),
+    _: UsuarioAutenticado = Depends(get_current_user),
 ):
     try:
         return servicio.obtener(cliente_id)
@@ -101,7 +101,7 @@ def actualizar_cliente(
     cliente_id: int,
     datos: ClienteUpdate,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
-    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
+    _: UsuarioAutenticado = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         return servicio.actualizar(
@@ -131,7 +131,7 @@ def actualizar_cliente(
 def eliminar_cliente(
     cliente_id: int,
     servicio: ClienteServicio = Depends(obtener_servicio_cliente),
-    _: UsuarioORM = Depends(require_role("admin", "recepcionista")),
+    _: UsuarioAutenticado = Depends(require_role("admin", "recepcionista")),
 ):
     try:
         servicio.eliminar(cliente_id)

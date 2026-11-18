@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.application.services.auth_servicio import AuthError, AuthServicio
-from app.infrastructure.models.usuario import UsuarioORM
+from app.domain.models import UsuarioAutenticado
 from app.presentation.dependencies import get_current_user, obtener_servicio_auth
 from app.presentation.schemas.dtos.auth_dto import (
     ForgotPasswordRequest,
@@ -66,7 +66,7 @@ def iniciar_sesion(
     responses={401: {"description": "Access JWT ausente, inválido o revocado"}},
 )
 def obtener_usuario_actual(
-    usuario_actual: UsuarioORM = Depends(get_current_user),
+    usuario_actual: UsuarioAutenticado = Depends(get_current_user),
 ):
     return usuario_actual
 

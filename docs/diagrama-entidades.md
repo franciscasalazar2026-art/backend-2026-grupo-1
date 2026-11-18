@@ -1,10 +1,10 @@
-# Diagrama de entidades — agenda de servicios
+﻿# Diagrama de entidades — agenda de servicios
 
-Este diagrama separa el **modelo conceptual de cuatro entidades** solicitado para la muestra del **modelo relacional que hoy aparece en el código**. Los campos propuestos para el modelo conceptual deben acordarse con el equipo antes de tratarlos como contrato definitivo.
+Este diagrama separa el **modelo conceptual de cuatro entidades** del **modelo relacional implementado en el código** (incluyendo reservas multiservicio y seguridad JWT).
 
-## Modelo conceptual propuesto
+## Modelo conceptual
 
-Una cita referencia un cliente, un servicio y un profesional. Por eso cada relación es 1:N desde la entidad de catálogo hacia las citas.
+Una cita vincula a un cliente con uno o más servicios atendidos por profesionales.
 
 ```mermaid
 erDiagram
@@ -38,25 +38,26 @@ erDiagram
     CITA {
         int id PK
         int cliente_id FK
-        int servicio_id FK
-        int profesional_id FK
         datetime fecha_hora
         string motivo
         string estado
     }
 ```
 
-## Modelo relacional que implementa el código actual
+## Modelo relacional implementado en el código
 
-El código normaliza la asignación de servicios a profesionales y separa una reserva de los datos de la cita. Por ello, `citas` no tiene claves foráneas directas a `clientes`, `servicios` y `profesionales`: la ruta de citas aplana esas relaciones en su respuesta HTTP.
+El esquema actual normaliza la asignación de servicios por profesional (profesional_servicios), permite reservas con múltiples servicios (reservas + detalle_reservas) asociadas 1:1 a una cita, y gestiona usuarios, refresh tokens y recuperación de contraseña.
 
 ```mermaid
 erDiagram
-    CLIENTES ||--o{ RESERVAS : posee
+    CLIENTES ||--o{ RESERVAS : realiza
+    RESERVAS ||--|{ DETALLE_RESERVAS : contiene
+    RESERVAS ||--o| CITAS : origina
     PROFESIONALES ||--o{ PROFESIONAL_SERVICIOS : ofrece
     SERVICIOS ||--o{ PROFESIONAL_SERVICIOS : se_asigna
-    PROFESIONAL_SERVICIOS ||--o{ RESERVAS : habilita
-    RESERVAS ||--o| CITAS : detalle
+    PROFESIONAL_SERVICIOS ||--o{ DETALLE_RESERVAS : programa
+    USUARIOS ||--o{ REFRESH_TOKENS : emite
+    USUARIOS ||--o{ TOKENS_RECUPERACION_USADOS : consume
 
     CLIENTES {
         int id PK
@@ -68,7 +69,7 @@ erDiagram
     SERVICIOS {
         int id PK
         string nombre
-        string descripcion
+        text descripcion
         int duracion_minutos
         decimal precio
         boolean activo
@@ -89,8 +90,15 @@ erDiagram
     RESERVAS {
         int id PK
         int cliente_id FK
-        int profesional_servicio_id FK
         datetime fecha_creacion
+    }
+    DETALLE_RESERVAS {
+        int id PK
+        int reserva_id FK
+        int profesional_servicio_id FK
+        datetime fecha_hora_inicio
+        int duracion_minutos
+        decimal precio
     }
     CITAS {
         int id PK
@@ -99,14 +107,37 @@ erDiagram
         string motivo
         string estado
     }
+    USUARIOS {
+        int id PK
+        string nombre
+        string email UK
+        string password_hash
+        string rol
+        boolean activo
+        int token_version
+        int intentos_fallidos
+        datetime bloqueado_hasta
+    }
+    REFRESH_TOKENS {
+        int id PK
+        int usuario_id FK
+        string token_hash UK
+        string familia_id
+        boolean revocado
+        datetime expira_en
+        datetime creado_en
+    }
+    TOKENS_RECUPERACION_USADOS {
+        int id PK
+        string jti UK
+        int usuario_id FK
+        datetime consumido_en
+    }
 ```
 
-La tabla `profesional_servicios` representa la relación N:M entre profesionales y servicios; su pareja de claves foráneas es única. `citas.reserva_id` es único, de modo que una reserva puede tener cero o una cita asociada en el esquema actual.
+### Reglas estructurales implementadas
 
-## Validaciones pendientes con el grupo
-
-- Confirmar que el negocio efectivamente agenda citas y que los tres tipos de actor propuestos participan.
-- Acordar atributos y cardinalidades definitivos, especialmente la relación reserva/cita.
-- Confirmar si se permitirán varias reservas para el mismo profesional en horarios que se traslapen.
-
-Los puntos del problema son hipótesis hasta que se conversen con el negocio. Ver también [`avance-isidora.md`](avance-isidora.md).
+- profesional_servicios posee restricción única sobre (profesional_id, servicio_id).
+- detalle_reservas posee restricción única sobre (reserva_id, profesional_servicio_id) y restricciones CHECK (duracion_minutos > 0, precio >= 0).
+- citas.reserva_id es único (FK_UK), garantizando una relación 1:1 entre reserva y cita con borrado en cascada (ON DELETE CASCADE).
+- Los usuarios disponen de rotación de refresh_tokens por familia_id, invalidación global por token_version y registro de jti de un solo uso en tokens_recuperacion_usados.

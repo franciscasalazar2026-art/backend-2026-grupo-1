@@ -1,4 +1,4 @@
-
+﻿
 from math import ceil
 
 from app.application.puertos.servicio_repositorio import (
@@ -38,7 +38,7 @@ class ServicioAplicacion:
             "total": total,
             "pagina": pagina,
             "limite": limite,
-            "total_paginas": ceil(total / limite) if total else 1,
+            "total_paginas": ceil(total / limite) if total > 0 else 0,
         }
 
     def obtener(self, servicio_id: int):

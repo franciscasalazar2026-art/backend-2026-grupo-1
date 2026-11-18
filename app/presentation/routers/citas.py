@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+﻿from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.services.cita_servicio import (
     CitaNoEncontrada,
@@ -14,17 +14,23 @@ from app.presentation.schemas.dtos.cita_dto import (
     CitaCreate,
     CitaUpdate,
 )
+from app.presentation.schemas.dtos.respuesta_paginada import RespuestaPaginada
 
 router = APIRouter(prefix="/citas", tags=["Citas"])
 
 
-@router.get("", response_model=dict)
+@router.get(
+    "",
+    response_model=RespuestaPaginada[Cita],
+    summary="Listar citas paginadas",
+    description="Obtiene un listado paginado de citas con filtro opcional por estado y ordenamiento validado.",
+)
 def listar_citas(
-    estado: EstadoCita | None = Query(None),
-    ordenar_por: str = Query("fecha_hora"),
-    direccion: str = Query("asc", pattern="^(asc|desc)$"),
-    pagina: int = Query(1, ge=1),
-    limite: int = Query(10, ge=1, le=100),
+    estado: EstadoCita | None = Query(None, description="Filtrar por estado de la cita"),
+    ordenar_por: str = Query("fecha_hora", description="Campo de ordenamiento: fecha_hora, id o estado"),
+    direccion: str = Query("asc", pattern="^(asc|desc)$", description="Dirección: asc o desc"),
+    pagina: int = Query(1, ge=1, description="Número de página (inicia en 1)"),
+    limite: int = Query(10, ge=1, le=100, description="Cantidad de elementos por página"),
     servicio: CitaServicio = Depends(obtener_servicio_cita),
 ):
     if ordenar_por not in {"fecha_hora", "id", "estado"}:
@@ -52,7 +58,9 @@ def listar_citas(
     "",
     response_model=Cita,
     status_code=status.HTTP_201_CREATED,
+    summary="Agendar una nueva cita",
     responses={409: {"description": "Conflicto de agenda o de persistencia"}},
+    description="Crea una reserva con uno o más servicios y registra la cita asociada validando disponibilidad horaria.",
 )
 def crear_cita(
     datos: CitaCreate,
@@ -78,7 +86,9 @@ def crear_cita(
 @router.get(
     "/{cita_id}",
     response_model=Cita,
+    summary="Obtener detalle de una cita",
     responses={404: {"description": "Cita no encontrada"}},
+    description="Consulta los datos completos de una cita específica junto con el detalle de sus servicios agendados.",
 )
 def obtener_cita(
     cita_id: int,
@@ -98,10 +108,12 @@ def obtener_cita(
 @router.put(
     "/{cita_id}",
     response_model=Cita,
+    summary="Actualizar una cita",
     responses={
         404: {"description": "Cita no encontrada"},
         409: {"description": "Conflicto de agenda o de persistencia"},
     },
+    description="Modifica fecha, hora, motivo o estado de una cita existente verificando que no existan solapamientos.",
 )
 def actualizar_cita(
     cita_id: int,
@@ -138,10 +150,12 @@ def actualizar_cita(
 @router.delete(
     "/{cita_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar una cita",
     responses={
         404: {"description": "Cita no encontrada"},
         409: {"description": "Conflicto al eliminar la cita"},
     },
+    description="Elimina una cita existente y su reserva asociada del sistema.",
 )
 def eliminar_cita(
     cita_id: int,

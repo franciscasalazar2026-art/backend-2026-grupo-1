@@ -1,4 +1,4 @@
-
+﻿
 class ClienteNoEncontrado(Exception):
     pass
 
@@ -20,7 +20,7 @@ class ClienteServicio:
             "pagina": desplazamiento // limite + 1,
             "limite": limite,
             "total_paginas": (
-                (total + limite - 1) // limite if total else 1
+                (total + limite - 1) // limite if total > 0 else 0
             ),
         }
 

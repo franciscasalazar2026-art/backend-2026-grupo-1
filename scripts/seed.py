@@ -188,9 +188,13 @@ def seed_data(db: Session) -> dict[str, int]:
 
         first_day = datetime.now(timezone.utc) + timedelta(days=7)
 
-        for index, (cliente, assignment) in enumerate(
-            zip(clients, assignments, strict=True), start=1
-        ):
+        booking_rows = [
+            (clients[0], assignments[0]),
+            (clients[0], assignments[1]),
+            (clients[1], assignments[1]),
+        ]
+
+        for index, (cliente, assignment) in enumerate(booking_rows, start=1):
             reservation = ReservaORM(
                 cliente_id=cliente.id,
             )
@@ -230,8 +234,8 @@ def seed_data(db: Session) -> dict[str, int]:
         "servicios": len(services),
         "profesionales": len(professionals),
         "profesional_servicios": len(assignments),
-        "reservas": len(clients),
-        "citas": len(clients),
+        "reservas": len(booking_rows),
+        "citas": len(booking_rows),
     }
 
 def main() -> None:

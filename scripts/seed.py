@@ -15,11 +15,39 @@ from app.infrastructure.models import (
     ProfesionalServicioORM,
     ReservaORM,
     ServicioORM,
+    UsuarioORM,
 )
 
 from app.infrastructure.models.detalle_reserva import DetalleReservaORM
+from app.infrastructure.security import hash_password
 
 SEED_PREFIX = "[SEED]"
+
+
+def _ensure_usuario(
+    db: Session,
+    nombre: str,
+    email: str,
+    password: str,
+    rol: str,
+) -> UsuarioORM:
+    usuario = db.scalar(
+        select(UsuarioORM).where(UsuarioORM.email == email)
+    )
+
+    if usuario is None:
+        usuario = UsuarioORM(
+            nombre=nombre,
+            email=email,
+            password_hash=hash_password(password),
+            rol=rol,
+            activo=True,
+            token_version=1,
+            intentos_fallidos=0,
+        )
+        db.add(usuario)
+
+    return usuario
 
 
 def _ensure_cliente(db: Session, nombre: str, email: str, telefono: str) -> ClienteORM:
@@ -121,6 +149,24 @@ def seed_data(db: Session) -> dict[str, int]:
                 "944444444",
             ),
         ]
+
+        users = [
+            _ensure_usuario(
+                db,
+                "Administrador Demo",
+                "admin.demo@example.test",
+                "AdminDemo2026!",
+                "admin",
+            ),
+            _ensure_usuario(
+                db,
+                "Cliente Demo",
+                "cliente.demo@example.test",
+                "ClienteDemo2026!",
+                "cliente",
+            ),
+        ]
+
         db.flush()
 
         assignments: list[ProfesionalServicioORM] = []
@@ -179,6 +225,7 @@ def seed_data(db: Session) -> dict[str, int]:
         raise
 
     return {
+        "usuarios": len(users),
         "clientes": len(clients),
         "servicios": len(services),
         "profesionales": len(professionals),

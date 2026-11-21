@@ -24,15 +24,26 @@ def test_seed_is_reproducible_and_creates_connected_rows(db_session):
         "servicios": 2,
         "profesionales": 2,
         "profesional_servicios": 2,
-        "reservas": 2,
-        "citas": 2,
+        "reservas": 3,
+        "citas": 3,
     }
     assert db_session.scalar(select(func.count(ClienteORM.id))) == 2
     assert db_session.scalar(select(func.count(ServicioORM.id))) == 2
     assert db_session.scalar(select(func.count(ProfesionalORM.id))) == 2
     assert db_session.scalar(select(func.count(ProfesionalServicioORM.id))) == 2
-    assert db_session.scalar(select(func.count(ReservaORM.id))) == 2
-    assert db_session.scalar(select(func.count(CitaORM.id))) == 2
+    assert db_session.scalar(select(func.count(ReservaORM.id))) == 3
+    cliente_uno = db_session.scalar(
+        select(ClienteORM).where(
+            ClienteORM.email == "seed.cliente1@example.test"
+        )
+    )
+    assert cliente_uno is not None
+    assert db_session.scalar(
+        select(func.count(ReservaORM.id)).where(
+            ReservaORM.cliente_id == cliente_uno.id
+        )
+    ) == 2
+    assert db_session.scalar(select(func.count(CitaORM.id))) == 3
 
 
 def test_seed_creates_demo_users_with_secure_passwords(db_session):

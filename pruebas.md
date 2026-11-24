@@ -58,11 +58,13 @@ El resultado de 43 aprobadas y 1 omitida del [PR #17](https://github.com/francis
 | Nivel | Aprobadas | Fallidas | Omitidas |
 | --- | ---: | ---: | ---: |
 | Unitarias | 21 | 0 | 0 |
-| Regresiones con SQLite | 60 | 0 | 0 |
+| Regresiones con SQLite | 61 | 0 | 0 |
 | Integración PostgreSQL | 11 | 0 | 0 |
 | E2E HTTP | 3 | 0 | 0 |
-| **Total** | **95** | **0** | **0** |
+| **Total** | **96** | **0** | **0** |
 
-El comando completo pasó el umbral con **87,28% de cobertura de líneas en `app`** e incluyó el proceso Uvicorn de los escenarios E2E. La ejecución se hizo en Windows con Python 3.13 y PostgreSQL 18 local. Se conservaron avisos de deprecación preexistentes de Pydantic y Starlette.
+La revisión del 24 de noviembre de 2026 pasó el umbral con **87,38% de cobertura de líneas en `app`** e incluyó el proceso Uvicorn de los escenarios E2E. Se ejecutó sobre `a931df8` con Python 3.13.15, PostgreSQL 18.6 y `-W error`, sin advertencias. La cifra de 88,26% indicada como antecedente en la tarea no se reprodujo con este commit y entorno.
 
-El resultado corresponde al conjunto de pruebas de esta rama. La ejecución del pipeline, la persistencia tras recrear contenedores y la operación en Kubero se verifican en la fase de infraestructura.
+Los [reportes de pytest, JUnit, cobertura y resumen](docs/evidencias/2026-11-24/README.md) permiten comprobar los conteos. El [informe de validación](docs/informe-validacion.md) registra las cinco advertencias de Starlette corregidas, los primeros errores de preparación E2E y el ajuste de plazo de arranque. Para equipos con arranque lento se puede definir `$env:E2E_STARTUP_TIMEOUT = '300'` antes del comando completo.
+
+El resultado corresponde al conjunto de pruebas de esta rama. La [comprobación Docker complementaria](docs/evidencias/2026-11-24/docker-operacion.json) también verificó persistencia al recrear solo la API. La ejecución del pipeline y la operación en Kubero permanecen pendientes.

@@ -1,0 +1,323 @@
+{
+  "generado_utc": "2026-11-24T16:15:45.907615+00:00",
+  "tipo_validacion": "Operación del stack Docker local complementario y persistencia del seeder",
+  "proyecto_compose": "backend-evidencias-isidora",
+  "revision_imagen": "a931df826436d40a1976b2e306f361fc74f2a0aa",
+  "imagen_web": {
+    "etiqueta_local": "backend-evidencias-isidora:revision",
+    "id": "sha256:5c58332954074fff7a644bebfcfcd6b2dc925176af5084719da07f681718f2c6",
+    "repo_digests": [
+      "backend-evidencias-isidora@sha256:5c58332954074fff7a644bebfcfcd6b2dc925176af5084719da07f681718f2c6"
+    ]
+  },
+  "versiones_runtime": {
+    "python": "Python 3.10.22",
+    "postgresql": "15.20"
+  },
+  "servicios_antes": {
+    "db": {
+      "contenedor_id": "a7f2cb943709fc17b7b9389570bbcb789b820ab56e105f9f9c874d731e9bbd57",
+      "estado": "running",
+      "healthcheck": "healthy",
+      "imagen": "postgres:15-alpine",
+      "puertos": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55440"
+          }
+        ]
+      }
+    },
+    "adminer": {
+      "contenedor_id": "62d8e80753ee9318303938e3574bd5a731ebad4d736123463252084661561866",
+      "estado": "running",
+      "healthcheck": "no configurado",
+      "imagen": "adminer:4",
+      "puertos": {
+        "8080/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8088"
+          }
+        ]
+      }
+    },
+    "web": {
+      "contenedor_id": "529028c6ebac1e74d7305bc0f8279c1de4ad2cf350aa2e6602a11822f17d3233",
+      "estado": "running",
+      "healthcheck": "no configurado",
+      "imagen": "backend-evidencias-isidora:revision",
+      "puertos": {
+        "8000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8008"
+          }
+        ]
+      }
+    }
+  },
+  "servicios_despues": {
+    "db": {
+      "contenedor_id": "a7f2cb943709fc17b7b9389570bbcb789b820ab56e105f9f9c874d731e9bbd57",
+      "estado": "running",
+      "healthcheck": "healthy",
+      "imagen": "postgres:15-alpine",
+      "puertos": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55440"
+          }
+        ]
+      }
+    },
+    "adminer": {
+      "contenedor_id": "62d8e80753ee9318303938e3574bd5a731ebad4d736123463252084661561866",
+      "estado": "running",
+      "healthcheck": "no configurado",
+      "imagen": "adminer:4",
+      "puertos": {
+        "8080/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8088"
+          }
+        ]
+      }
+    },
+    "web": {
+      "contenedor_id": "449b6b72e512d54d08f36e387b2b17345d75313c06760404d1138dc5bd5c6d0d",
+      "estado": "running",
+      "healthcheck": "no configurado",
+      "imagen": "backend-evidencias-isidora:revision",
+      "puertos": {
+        "8000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8008"
+          }
+        ]
+      }
+    }
+  },
+  "http": {
+    "api_antes": {
+      "url": "http://127.0.0.1:8008/",
+      "http": 200,
+      "respuesta": {
+        "status": "ok",
+        "version": "1.0.0"
+      }
+    },
+    "api_despues": {
+      "url": "http://127.0.0.1:8008/",
+      "http": 200,
+      "respuesta": {
+        "status": "ok",
+        "version": "1.0.0"
+      }
+    },
+    "adminer": {
+      "url": "http://127.0.0.1:8088/",
+      "http": 200
+    },
+    "openapi": {
+      "url": "http://127.0.0.1:8008/openapi.json",
+      "http": 200,
+      "version_api": "1.0.0",
+      "cantidad_rutas": 19,
+      "cantidad_operaciones": 32
+    }
+  },
+  "base_antes": {
+    "tablas": [
+      "alembic_version",
+      "citas",
+      "clientes",
+      "detalle_reservas",
+      "profesional_servicios",
+      "profesionales",
+      "refresh_tokens",
+      "reservas",
+      "servicios",
+      "tokens_recuperacion_usados",
+      "usuarios"
+    ],
+    "alembic_version": [
+      "c4d987ee6f20"
+    ],
+    "datos_ficticios": {
+      "citas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "clientes": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "detalle_reservas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "profesional_servicios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "profesionales": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "refresh_tokens": {
+        "filas": 0,
+        "ids": []
+      },
+      "reservas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "servicios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "tokens_recuperacion_usados": {
+        "filas": 0,
+        "ids": []
+      },
+      "usuarios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "base_despues": {
+    "tablas": [
+      "alembic_version",
+      "citas",
+      "clientes",
+      "detalle_reservas",
+      "profesional_servicios",
+      "profesionales",
+      "refresh_tokens",
+      "reservas",
+      "servicios",
+      "tokens_recuperacion_usados",
+      "usuarios"
+    ],
+    "alembic_version": [
+      "c4d987ee6f20"
+    ],
+    "datos_ficticios": {
+      "citas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "clientes": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "detalle_reservas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "profesional_servicios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "profesionales": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "refresh_tokens": {
+        "filas": 0,
+        "ids": []
+      },
+      "reservas": {
+        "filas": 3,
+        "ids": [
+          1,
+          2,
+          3
+        ]
+      },
+      "servicios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      },
+      "tokens_recuperacion_usados": {
+        "filas": 0,
+        "ids": []
+      },
+      "usuarios": {
+        "filas": 2,
+        "ids": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "persistencia": {
+    "accion": "docker compose up -d --no-deps --force-recreate web",
+    "web_recreada": true,
+    "db_mismo_contenedor": true,
+    "adminer_mismo_contenedor": true,
+    "volumen_postgresql_antes": "backend-evidencias-isidora_evidence_data",
+    "volumen_postgresql_despues": "backend-evidencias-isidora_evidence_data",
+    "mismas_tablas_version_conteos_e_ids": true
+  },
+  "eventos_arranque_api": [
+    "INFO:     Started server process [1]",
+    "INFO:     Application startup complete.",
+    "INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)"
+  ],
+  "datos_publicados": "Estados, puertos locales, versiones, revisiones, tablas, conteos e identificadores ficticios del seeder"
+}

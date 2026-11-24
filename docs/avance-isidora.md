@@ -1,5 +1,7 @@
 # Matriz de requisitos y avance — Isidora
 
+> Registro histórico de la revisión basada en `223459c`. Los resultados actuales y las verificaciones de PostgreSQL están en el [informe del 24 de noviembre de 2026](informe-validacion.md) y la [matriz de evidencias de la rúbrica](matriz-evidencias-rubrica.md).
+
 Esta matriz registra el estado comprobado en la rama de cierre basada en `origin/main` (`223459c`). Los cambios de esta rama deben integrarse mediante revisión antes de considerarlos parte de `main`.
 
 | Requisito | Estado | Evidencia / pendiente |

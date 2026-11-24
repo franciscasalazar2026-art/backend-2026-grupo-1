@@ -2,6 +2,9 @@
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+# El valor numérico conserva compatibilidad con versiones anteriores de Starlette.
+HTTP_422_UNPROCESSABLE_CONTENT = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+
 
 def _extraer_mensaje_uniforme(raw_detail) -> str:
     if isinstance(raw_detail, str):
@@ -46,7 +49,7 @@ def registrar_manejadores_errores(app: FastAPI) -> None:
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         mensaje = _extraer_mensaje_uniforme(exc.errors())
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=HTTP_422_UNPROCESSABLE_CONTENT,
             content={
                 "error": "VALIDATION_ERROR",
                 "mensaje": mensaje,

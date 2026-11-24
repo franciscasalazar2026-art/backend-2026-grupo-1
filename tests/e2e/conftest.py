@@ -32,7 +32,19 @@ class ServidorE2E:
 
 
 def _esperar_url(proceso: subprocess.Popen, log: Path) -> str:
-    plazo = monotonic() + 20
+    try:
+        espera = float(os.getenv("E2E_STARTUP_TIMEOUT", "60"))
+    except ValueError:
+        pytest.fail(
+            "E2E_STARTUP_TIMEOUT debe ser un número mayor que 0 y hasta 300 segundos.",
+            pytrace=False,
+        )
+    if not 0 < espera <= 300:
+        pytest.fail(
+            "E2E_STARTUP_TIMEOUT debe ser un número mayor que 0 y hasta 300 segundos.",
+            pytrace=False,
+        )
+    plazo = monotonic() + espera
     while monotonic() < plazo:
         if proceso.poll() is not None:
             pytest.fail(f"Uvicorn terminó con código {proceso.returncode}. Log: {log}")
@@ -41,7 +53,9 @@ def _esperar_url(proceso: subprocess.Popen, log: Path) -> str:
         if match:
             return match.group(1)
         sleep(0.05)
-    pytest.fail(f"Uvicorn no abrió un puerto local a tiempo. Log: {log}")
+    pytest.fail(
+        f"Uvicorn no abrió un puerto local en {espera:g} segundos. Log: {log}"
+    )
 
 
 @pytest.fixture

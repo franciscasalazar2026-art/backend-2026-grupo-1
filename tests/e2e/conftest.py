@@ -78,6 +78,8 @@ def servidor_e2e(postgres_engine, tmp_path) -> Iterator[ServidorE2E]:
             "DB_NAME": url.database,
             "DB_USER": url.username,
             "DB_PASSWORD": url.password,
+            # Use the same validated loopback destination as the PostgreSQL fixture.
+            "PGHOSTADDR": "127.0.0.1" if url.host == "localhost" else url.host,
             "PGOPTIONS": f"-c search_path={esquema}",
             "JWT_SECRET_KEY": secreto,
             "JWT_ALGORITHM": "HS256",

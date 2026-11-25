@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from sqlalchemy import func, select
 
@@ -10,7 +12,7 @@ from app.infrastructure.models import (
     ServicioORM,
     UsuarioORM,
 )
-from app.infrastructure.security import verify_password
+from app.infrastructure.security import hash_password, verify_password
 from scripts.seed import seed_data
 
 
@@ -117,3 +119,99 @@ def test_seed_demo_accounts_can_login_through_http(
     error = credencial_incorrecta.json()
     assert set(error) == {"error", "mensaje", "detail"}
     assert error["error"] == "HTTP_401"
+
+
+def test_seed_updates_legacy_demo_emails_preserving_identity_and_security_state(db_session):
+    anteriores = [
+        UsuarioORM(
+            nombre="Nombre modificado del antiguo administrador",
+            email="admin.demo@example.test",
+            password_hash=hash_password("Clave anterior cambiada admin"),
+            rol="cliente",
+            activo=False,
+            token_version=7,
+            intentos_fallidos=3,
+            bloqueado_hasta=datetime.now(timezone.utc) + timedelta(minutes=10),
+        ),
+        UsuarioORM(
+            nombre="Nombre modificado del antiguo cliente",
+            email="cliente.demo@example.test",
+            password_hash=hash_password("Clave anterior cambiada cliente"),
+            rol="recepcionista",
+            activo=True,
+            token_version=4,
+            intentos_fallidos=2,
+        ),
+    ]
+    db_session.add_all(anteriores)
+    db_session.commit()
+    campos_preservados = (
+        "id", "nombre", "password_hash", "rol", "activo", "token_version",
+        "intentos_fallidos", "bloqueado_hasta",
+    )
+    estado_anterior = {
+        cuenta.id: {campo: getattr(cuenta, campo) for campo in campos_preservados}
+        for cuenta in anteriores
+    }
+    correos_esperados = {
+        anteriores[0].id: "admin.demo@example.com",
+        anteriores[1].id: "cliente.demo@example.com",
+    }
+
+    for _ in range(2):
+        seed_data(db_session)
+        db_session.expire_all()
+        cuentas = list(db_session.scalars(select(UsuarioORM)))
+        assert {cuenta.id: cuenta.email for cuenta in cuentas} == correos_esperados
+        assert {
+            cuenta.id: {campo: getattr(cuenta, campo) for campo in campos_preservados}
+            for cuenta in cuentas
+        } == estado_anterior
+
+    assert verify_password("Clave anterior cambiada admin", anteriores[0].password_hash)
+    assert verify_password("Clave anterior cambiada cliente", anteriores[1].password_hash)
+
+
+def test_seed_does_not_merge_legacy_account_when_current_demo_email_is_taken(db_session):
+    actuales = [
+        UsuarioORM(
+            nombre="Cuenta anterior de demostración",
+            email="admin.demo@example.test",
+            password_hash=hash_password("Clave conservada anterior"),
+            rol="recepcionista",
+            activo=False,
+            token_version=6,
+            intentos_fallidos=2,
+        ),
+        UsuarioORM(
+            nombre="Otra cuenta que ya usa el correo actual",
+            email="admin.demo@example.com",
+            password_hash=hash_password("Clave conservada de otra cuenta"),
+            rol="cliente",
+            activo=True,
+            token_version=3,
+            intentos_fallidos=1,
+        ),
+    ]
+    db_session.add_all(actuales)
+    db_session.commit()
+    campos_preservados = (
+        "id", "nombre", "email", "password_hash", "rol", "activo", "token_version",
+        "intentos_fallidos", "bloqueado_hasta",
+    )
+    estado_anterior = {
+        cuenta.id: {campo: getattr(cuenta, campo) for campo in campos_preservados}
+        for cuenta in actuales
+    }
+
+    for _ in range(2):
+        seed_data(db_session)
+        db_session.expire_all()
+        for cuenta in actuales:
+            assert {
+                campo: getattr(cuenta, campo) for campo in campos_preservados
+            } == estado_anterior[cuenta.id]
+        assert db_session.scalar(select(func.count(UsuarioORM.id))) == 3
+
+    assert verify_password("Clave conservada anterior", actuales[0].password_hash)
+    assert verify_password("Clave conservada de otra cuenta", actuales[1].password_hash)

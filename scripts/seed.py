@@ -29,10 +29,18 @@ def _ensure_usuario(
     email: str,
     password: str,
     rol: str,
+    legacy_email: str | None = None,
 ) -> UsuarioORM:
     usuario = db.scalar(
         select(UsuarioORM).where(UsuarioORM.email == email)
     )
+
+    if usuario is None and legacy_email is not None:
+        usuario = db.scalar(
+            select(UsuarioORM).where(UsuarioORM.email == legacy_email)
+        )
+        if usuario is not None:
+            usuario.email = email
 
     if usuario is None:
         usuario = UsuarioORM(
@@ -156,6 +164,7 @@ def seed_data(db: Session) -> dict[str, int]:
                 "admin.demo@example.com",
                 "AdminDemo2026!",
                 "admin",
+                legacy_email="admin.demo@example.test",
             ),
             _ensure_usuario(
                 db,
@@ -163,6 +172,7 @@ def seed_data(db: Session) -> dict[str, int]:
                 "cliente.demo@example.com",
                 "ClienteDemo2026!",
                 "cliente",
+                legacy_email="cliente.demo@example.test",
             ),
         ]
 

@@ -16,6 +16,7 @@ from app.infrastructure.models import (
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
 from app.infrastructure.security import (
     create_recovery_token,
+    hash_password,
     hash_token,
     verify_password,
 )
@@ -208,3 +209,101 @@ def test_reset_failure_rolls_back_password_consumption_and_revocation(
     with Session(postgres_engine) as verification:
         assert verification.scalars(select(TokenRecuperacionUsadoORM)).one().jti == jti
         assert verification.scalars(select(RefreshTokenORM)).one().revocado
+
+
+def test_login_lock_survives_a_new_database_session(auth_service, postgres_engine):
+    for _ in range(5):
+        with pytest.raises(AuthError) as failure:
+            auth_service.iniciar_sesion(EMAIL, "Clave-Incorrecta-2026!")
+        assert failure.value.status_code == 401
+
+    with Session(postgres_engine) as verification:
+        user = verification.scalars(select(UsuarioORM)).one()
+        assert user.intentos_fallidos == 5
+        assert user.bloqueado_hasta > datetime.now(timezone.utc)
+        assert verification.scalars(select(RefreshTokenORM)).first() is None
+
+    # A different request must read and enforce the lock persisted by the failures.
+    with Session(postgres_engine) as request, pytest.raises(AuthError) as locked:
+        AuthServicio(UsuarioRepository(request)).iniciar_sesion(EMAIL, INITIAL_PASSWORD)
+    assert locked.value.status_code == 429
+
+    with Session(postgres_engine) as verification:
+        assert verification.scalars(select(UsuarioORM)).one().intentos_fallidos == 5
+        assert verification.scalars(select(RefreshTokenORM)).first() is None
+
+
+def test_user_email_is_normalized_and_unique_in_postgresql(
+    postgres_session, postgres_engine
+):
+    repository = UsuarioRepository(postgres_session)
+    password_hash = hash_password(INITIAL_PASSWORD)
+    first = repository.crear_usuario(
+        nombre="  Cuenta normalizada  ",
+        email="  Mi.Cuenta@Example.COM  ",
+        password_hash=password_hash,
+    )
+    first_id = first.id
+    assert first.nombre == "Cuenta normalizada"
+    assert first.email == "mi.cuenta@example.com"
+
+    with pytest.raises(IntegrityError) as duplicate:
+        repository.crear_usuario(
+            nombre="Otra cuenta",
+            email="MI.CUENTA@example.com",
+            password_hash=password_hash,
+        )
+    assert duplicate.value.orig.pgcode == "23505"
+    postgres_session.rollback()
+
+    with Session(postgres_engine) as verification:
+        persisted = verification.scalars(select(UsuarioORM)).one()
+        assert persisted.id == first_id
+        assert persisted.nombre == "Cuenta normalizada"
+        assert persisted.email == "mi.cuenta@example.com"
+        assert verify_password(INITIAL_PASSWORD, persisted.password_hash)
+
+
+def test_concurrent_distinct_recovery_tokens_allow_only_one_change(
+    auth_service, postgres_engine
+):
+    user_id = auth_service.iniciar_sesion(EMAIL, INITIAL_PASSWORD)["usuario"].id
+    first, first_jti, _ = create_recovery_token(user_id)
+    second, second_jti, _ = create_recovery_token(user_id)
+    assert first_jti != second_jti
+    simultaneous = Barrier(2)
+
+    def attempt(candidate: tuple[str, str]) -> tuple[int, str, str]:
+        token, password = candidate
+        with Session(postgres_engine) as session:
+            service = AuthServicio(UsuarioRepository(session))
+            simultaneous.wait(timeout=10)
+            try:
+                service.restablecer_contrasena(token, password)
+            except AuthError as error:
+                return error.status_code, token, password
+            return 200, token, password
+
+    candidates = (
+        (first, "Primer-Candidato-2026!"),
+        (second, "Segundo-Candidato-2026!"),
+    )
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(attempt, candidates, timeout=35))
+
+    assert sorted(status for status, _, _ in outcomes) == [200, 401]
+    _, winning_token, winning_password = next(row for row in outcomes if row[0] == 200)
+    _, _, rejected_password = next(row for row in outcomes if row[0] == 401)
+    winning_jti = first_jti if winning_token == first else second_jti
+    with Session(postgres_engine) as verification:
+        user = verification.get(UsuarioORM, user_id)
+        assert user.token_version == 2
+        assert verify_password(winning_password, user.password_hash)
+        assert not verify_password(rejected_password, user.password_hash)
+        assert (
+            verification.scalars(select(TokenRecuperacionUsadoORM)).one().jti
+            == winning_jti
+        )
+        assert all(
+            row.revocado for row in verification.scalars(select(RefreshTokenORM))
+        )

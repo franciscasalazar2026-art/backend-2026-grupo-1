@@ -76,6 +76,21 @@ Completa `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD` en `.env`. C
 
 La raíz `GET /` comprueba disponibilidad. Para preparar datos de demostración, usa `.\.venv\Scripts\python.exe -m scripts.seed` sobre una base local de desarrollo.
 
+### Cuentas de demostración local
+
+Después de aplicar las migraciones, ejecuta el seeder en esa misma base y abre Swagger en `/docs`. Las dos cuentas ficticias son:
+
+| Rol | Correo | Contraseña de demostración |
+| --- | --- | --- |
+| Admin | `admin.demo@example.com` | `AdminDemo2026!` |
+| Cliente | `cliente.demo@example.com` | `ClienteDemo2026!` |
+
+En `POST /auth/login`, envía `email` y `password`. Copia únicamente el `access_token` a **Authorize** para consultar `/auth/me` y las operaciones protegidas. Una escritura de `/clientes` con cliente devuelve `403`; la misma petición con admin permite crear el recurso. El registro público siempre crea un cliente aunque se envíe `rol: admin`.
+
+Estas credenciales corresponden al seeder local. Las pruebas generan cuentas independientes y verifican el login HTTP de ambas cuentas demo, sus roles y la ausencia de contraseña y hash en los perfiles. El seeder conserva usuarios existentes y no restablece sus contraseñas. Si antes se ejecutó la versión con correos `@example.test`, esas cuentas permanecen y se agregan las dos `@example.com`; una base nueva contiene solo las dos actuales. Repetirlo no agrega duplicados.
+
+La política implementada exige al menos 12 caracteres tanto en registro como en recuperación. El plan describe además mezcla de caracteres; esa condición adicional requiere acordar el contrato con el equipo, pues el código y la pauta de 5.5 revisados exigen la longitud mínima. Las claves demo cumplen ambas descripciones.
+
 ## Pruebas automatizadas
 
 Las unitarias y las regresiones HTTP en memoria se pueden ejecutar sin PostgreSQL.

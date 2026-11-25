@@ -17,7 +17,6 @@ from app.infrastructure.models import (
     ServicioORM,
     UsuarioORM,
 )
-
 from app.infrastructure.models.detalle_reserva import DetalleReservaORM
 from app.infrastructure.security import hash_password
 
@@ -154,14 +153,14 @@ def seed_data(db: Session) -> dict[str, int]:
             _ensure_usuario(
                 db,
                 "Administrador Demo",
-                "admin.demo@example.test",
+                "admin.demo@example.com",
                 "AdminDemo2026!",
                 "admin",
             ),
             _ensure_usuario(
                 db,
                 "Cliente Demo",
-                "cliente.demo@example.test",
+                "cliente.demo@example.com",
                 "ClienteDemo2026!",
                 "cliente",
             ),

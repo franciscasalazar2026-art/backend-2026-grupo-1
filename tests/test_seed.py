@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import func, select
 
 from app.infrastructure.models import (
@@ -51,12 +52,12 @@ def test_seed_creates_demo_users_with_secure_passwords(db_session):
 
     admin = db_session.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.email == "admin.demo@example.test"
+            UsuarioORM.email == "admin.demo@example.com"
         )
     )
     cliente = db_session.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.email == "cliente.demo@example.test"
+            UsuarioORM.email == "cliente.demo@example.com"
         )
     )
 
@@ -77,3 +78,42 @@ def test_seed_creates_demo_users_with_secure_passwords(db_session):
     assert db_session.scalar(
         select(func.count(UsuarioORM.id))
     ) == 2
+
+
+@pytest.mark.parametrize(
+    "email,password,rol",
+    [
+        ("admin.demo@example.com", "AdminDemo2026!", "admin"),
+        ("cliente.demo@example.com", "ClienteDemo2026!", "cliente"),
+    ],
+)
+def test_seed_demo_accounts_can_login_through_http(
+    client, db_session, email, password, rol
+):
+    seed_data(db_session)
+
+    respuesta = client.post("/auth/login", json={"email": email, "password": password})
+    assert respuesta.status_code == 200
+    sesion = respuesta.json()
+    assert sesion["token_type"] == "bearer"
+    assert sesion["access_token"] and sesion["refresh_token"]
+    usuario = sesion["usuario"]
+    assert set(usuario) == {"id", "nombre", "email", "rol", "activo"}
+    assert usuario["email"] == email
+    assert usuario["rol"] == rol
+    assert usuario["activo"] is True
+
+    perfil = client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {sesion['access_token']}"}
+    )
+    assert perfil.status_code == 200
+    assert perfil.json() == usuario
+
+    credencial_incorrecta = client.post(
+        "/auth/login",
+        json={"email": email, "password": "Clave incorrecta de prueba"},
+    )
+    assert credencial_incorrecta.status_code == 401
+    error = credencial_incorrecta.json()
+    assert set(error) == {"error", "mensaje", "detail"}
+    assert error["error"] == "HTTP_401"

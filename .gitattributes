@@ -1,0 +1,5 @@
+# Keep the published report hashes stable across Windows and Linux checkouts.
+docs/evidencias/**/junit.xml text eol=lf
+docs/evidencias/**/coverage.xml text eol=lf
+docs/evidencias/**/pytest.txt text eol=lf
+docs/evidencias/**/resumen.json text eol=lf

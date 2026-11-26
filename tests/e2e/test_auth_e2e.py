@@ -20,10 +20,14 @@ def _bearer(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _password_segura() -> str:
+    return f"Aa1!{secrets.token_urlsafe(24)}"
+
+
 def _registrar_cliente(http: httpx2.Client) -> dict[str, str]:
     credenciales = {
         "email": f"cliente-{uuid4().hex}@example.com",
-        "password": secrets.token_urlsafe(24),
+        "password": _password_segura(),
     }
     respuesta = http.post(
         "/auth/registro", json={"nombre": "Cliente E2E", **credenciales}
@@ -32,7 +36,7 @@ def _registrar_cliente(http: httpx2.Client) -> dict[str, str]:
     usuario = respuesta.json()
     assert usuario["email"] == credenciales["email"]
     assert usuario["activo"] is True and usuario["rol"] == "cliente"
-    assert "password_hash" not in usuario
+    assert {"password", "password_hash"}.isdisjoint(usuario)
     return credenciales
 
 
@@ -44,6 +48,7 @@ def _login(http: httpx2.Client, credenciales: dict[str, str], rol: str) -> dict:
     assert datos["usuario"]["rol"] == rol
     assert datos["token_type"] == "bearer"
     assert datos["access_token"] and datos["refresh_token"]
+    assert {"password", "password_hash"}.isdisjoint(datos["usuario"])
     return datos
 
 
@@ -96,12 +101,71 @@ def test_login_creacion_y_consulta_protegidas_logout_y_refresh_rechazado(
     _estado(http.post("/auth/refresh", json={"refresh_token": refresh}), 401)
 
 
+def test_registro_con_rol_admin_solicitado_conserva_cliente_y_cierra_sesion(
+    servidor_e2e, preparar_personal
+):
+    http = servidor_e2e.http
+    personal = _login(http, preparar_personal("recepcionista"), "recepcionista")
+    recurso = {
+        "nombre": "Cliente consultado por cuenta registrada",
+        "email": f"recurso-{uuid4().hex}@example.test",
+        "telefono": "+56912345678",
+    }
+    creado = http.post(
+        "/clientes", json=recurso, headers=_bearer(personal["access_token"])
+    )
+    _estado(creado, 201)
+    recurso_id = creado.json()["id"]
+
+    credenciales = {
+        "email": f"registro-{uuid4().hex}@example.com",
+        "password": _password_segura(),
+    }
+    registro = http.post(
+        "/auth/registro",
+        json={"nombre": "Registro con rol solicitado", "rol": "admin", **credenciales},
+    )
+    _estado(registro, 201)
+    usuario = registro.json()
+    assert usuario["email"] == credenciales["email"]
+    assert usuario["rol"] == "cliente" and usuario["activo"] is True
+    assert {"password", "password_hash"}.isdisjoint(usuario)
+
+    sesion = _login(http, credenciales, "cliente")
+    assert sesion["usuario"]["id"] == usuario["id"]
+    headers = _bearer(sesion["access_token"])
+    consultado = http.get(f"/clientes/{recurso_id}", headers=headers)
+    _estado(consultado, 200)
+    assert consultado.json() == {"id": recurso_id, **recurso, "activo": True}
+
+    intento_escritura = {
+        **recurso,
+        "email": f"rechazado-{uuid4().hex}@example.test",
+    }
+    _estado(http.post("/clientes", json=intento_escritura, headers=headers), 403)
+    _estado(
+        http.post("/auth/logout", json={"refresh_token": sesion["refresh_token"]}),
+        200,
+    )
+    _estado(
+        http.post("/auth/refresh", json={"refresh_token": sesion["refresh_token"]}),
+        401,
+    )
+
+
 def test_recuperacion_generica_de_un_uso_y_revocacion_de_sesiones(servidor_e2e):
     http = servidor_e2e.http
     cliente = _registrar_cliente(http)
     sesion_anterior = _login(http, cliente, "cliente")
+    segunda_sesion = _login(http, cliente, "cliente")
+    assert segunda_sesion["refresh_token"] != sesion_anterior["refresh_token"]
     acceso_anterior = _bearer(sesion_anterior["access_token"])
     _estado(http.get("/auth/me", headers=acceso_anterior), 200)
+    _estado(http.get("/auth/me", headers=_bearer(segunda_sesion["access_token"])), 200)
+    otra_cuenta = _registrar_cliente(http)
+    sesion_otra_cuenta = _login(http, otra_cuenta, "cliente")
+    otro_usuario_id = sesion_otra_cuenta["usuario"]["id"]
+    assert otro_usuario_id != sesion_anterior["usuario"]["id"]
 
     respuesta_conocida, token = _solicitar_token(servidor_e2e, cliente["email"])
     archivos_anteriores = set(servidor_e2e.buzon.iterdir())
@@ -117,7 +181,7 @@ def test_recuperacion_generica_de_un_uso_y_revocacion_de_sesiones(servidor_e2e):
     _, token_pendiente = _solicitar_token(servidor_e2e, cliente["email"])
     assert token_pendiente != token
 
-    password_nueva = secrets.token_urlsafe(24)
+    password_nueva = _password_segura()
 
     def restablecer(token_recuperacion: str, password: str) -> httpx2.Response:
         return http.post(
@@ -140,24 +204,38 @@ def test_recuperacion_generica_de_un_uso_y_revocacion_de_sesiones(servidor_e2e):
     _estado(restablecer(token_vencido, password_nueva), 401)
     _estado(http.get("/auth/me", headers=acceso_anterior), 200)
 
-    _estado(restablecer(token, password_nueva), 200)
-    otro_password = secrets.token_urlsafe(24)
-    _estado(restablecer(token, otro_password), 400)
-    _estado(restablecer(token_pendiente, otro_password), 401)
-    _estado(http.get("/auth/me", headers=acceso_anterior), 401)
     _estado(
         http.post(
-            "/auth/refresh",
+            "/auth/reset-password",
             json={
-                "refresh_token": sesion_anterior["refresh_token"],
+                "token": token,
+                "nueva_password": password_nueva,
+                "usuario_id": otro_usuario_id,
             },
         ),
-        401,
+        200,
     )
+    otro_password = _password_segura()
+    _estado(restablecer(token, otro_password), 400)
+    _estado(restablecer(token_pendiente, otro_password), 401)
+    for sesion in (sesion_anterior, segunda_sesion):
+        _estado(http.get("/auth/me", headers=_bearer(sesion["access_token"])), 401)
+        _estado(
+            http.post("/auth/refresh", json={"refresh_token": sesion["refresh_token"]}),
+            401,
+        )
     _estado(http.post("/auth/login", json=cliente), 401)
+    _estado(http.post("/auth/login", json={**cliente, "password": otro_password}), 401)
 
     sesion_nueva = _login(http, {**cliente, "password": password_nueva}, "cliente")
+    assert sesion_nueva["usuario"]["id"] == sesion_anterior["usuario"]["id"]
     _estado(http.get("/auth/me", headers=_bearer(sesion_nueva["access_token"])), 200)
+    _estado(
+        http.get("/auth/me", headers=_bearer(sesion_otra_cuenta["access_token"])),
+        200,
+    )
+    sesion_otra_cuenta_vigente = _login(http, otra_cuenta, "cliente")
+    assert sesion_otra_cuenta_vigente["usuario"]["id"] == otro_usuario_id
 
 
 def test_mismo_servicio_sin_autenticacion_cliente_y_admin(

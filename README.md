@@ -26,6 +26,9 @@ API REST con FastAPI y SQLAlchemy para administrar clientes, servicios, profesio
 - `scripts/seed.py` agrega datos conectados de demostración de forma repetible.
 - `tests/` incluye unitarias, regresiones con SQLite, integración PostgreSQL y E2E por HTTP.
 - El modelo conceptual y relacional se describe en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md).
+- La revisión de imports, módulos legados y mappers está en [`docs/revision-arquitectura.md`](docs/revision-arquitectura.md).
+- La comprobación del plan asignado a Isidora está en [`docs/cierre-isidora.md`](docs/cierre-isidora.md), con [107 pruebas aprobadas y 87,44% de cobertura](docs/evidencias/2026-11-25/README.md) en la revisión del 25 de noviembre.
+- Las [capturas y comprobación Docker del 26 de noviembre](docs/evidencias/2026-11-26/README.md) muestran Swagger, salud, contenedores, PostgreSQL y persistencia de esa misma revisión en un entorno complementario.
 
 ## Requisitos
 
@@ -75,6 +78,21 @@ Completa `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD` en `.env`. C
 
 La raíz `GET /` comprueba disponibilidad. Para preparar datos de demostración, usa `.\.venv\Scripts\python.exe -m scripts.seed` sobre una base local de desarrollo.
 
+### Cuentas de demostración local
+
+Después de aplicar las migraciones, ejecuta el seeder en esa misma base y abre Swagger en `/docs`. Las dos cuentas ficticias son:
+
+| Rol | Correo | Contraseña de demostración |
+| --- | --- | --- |
+| Admin | `admin.demo@example.com` | `AdminDemo2026!` |
+| Cliente | `cliente.demo@example.com` | `ClienteDemo2026!` |
+
+En `POST /auth/login`, envía `email` y `password`. Copia únicamente el `access_token` a **Authorize** para consultar `/auth/me` y las operaciones protegidas. Una escritura de `/clientes` con cliente devuelve `403`; la misma petición con admin permite crear el recurso. El registro público siempre crea un cliente aunque se envíe `rol: admin`.
+
+Estas credenciales corresponden al seeder local en una base nueva. Las pruebas generan cuentas independientes y verifican el login HTTP de ambas cuentas demo, sus roles y la ausencia de contraseña y hash en los perfiles. Si existe una cuenta demo antigua con correo `@example.test` y el correo actual está libre, el seeder actualiza únicamente su correo a `@example.com`: conserva ID, hash, rol, estado y sesiones. Si el correo actual ya está ocupado, conserva ambas cuentas y no las fusiona. No restablece contraseñas ni privilegios de cuentas existentes. Una base nueva contiene dos usuarios y repetir el seeder no agrega duplicados.
+
+La política implementada exige al menos 12 caracteres tanto en registro como en recuperación. El plan describe además mezcla de caracteres; esa condición adicional requiere acordar el contrato con el equipo, pues el código y la pauta de 5.5 revisados exigen la longitud mínima. Las claves demo cumplen ambas descripciones.
+
 ## Pruebas automatizadas
 
 Las unitarias y las regresiones HTTP en memoria se pueden ejecutar sin PostgreSQL.
@@ -84,7 +102,7 @@ Las pruebas completas requieren `TEST_POSTGRES_URL` hacia una base PostgreSQL lo
 ```powershell
 $backendPython = '.\.venv\Scripts\python.exe'
 & $backendPython -m pytest -q tests/unit
-& $backendPython -m pytest -q tests --ignore=tests/integration --ignore=tests/e2e
+& $backendPython -m pytest -q tests --ignore=tests/unit --ignore=tests/integration --ignore=tests/e2e
 
 if (-not $env:TEST_POSTGRES_URL) { throw 'Configura TEST_POSTGRES_URL según pruebas.md' }
 & $backendPython -m pytest -q tests/integration
@@ -93,6 +111,8 @@ if (-not $env:TEST_POSTGRES_URL) { throw 'Configura TEST_POSTGRES_URL según pru
 ```
 
 La preparación de PostgreSQL, los casos por nivel y el resultado medido están en [`pruebas.md`](pruebas.md). La tabla de hallazgos y comprobaciones está en [`docs/retroalimentacion.md`](docs/retroalimentacion.md).
+
+La consolidación de las tareas 3 y 4 está en el [informe de validación histórico](docs/informe-validacion.md), los [resultados actuales de pruebas](docs/evidencias/2026-11-25/README.md), las [capturas y operación Docker](docs/evidencias/2026-11-26/README.md) y la [matriz de los criterios de la rúbrica](docs/matriz-evidencias-rubrica.md). Para arranques E2E lentos puede definirse `E2E_STARTUP_TIMEOUT` en segundos. El valor predeterminado es 60 y admite valores mayores que cero y hasta 300.
 
 ## Endpoints registrados
 

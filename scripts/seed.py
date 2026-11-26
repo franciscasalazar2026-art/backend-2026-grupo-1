@@ -17,7 +17,6 @@ from app.infrastructure.models import (
     ServicioORM,
     UsuarioORM,
 )
-
 from app.infrastructure.models.detalle_reserva import DetalleReservaORM
 from app.infrastructure.security import hash_password
 
@@ -30,10 +29,18 @@ def _ensure_usuario(
     email: str,
     password: str,
     rol: str,
+    legacy_email: str | None = None,
 ) -> UsuarioORM:
     usuario = db.scalar(
         select(UsuarioORM).where(UsuarioORM.email == email)
     )
+
+    if usuario is None and legacy_email is not None:
+        usuario = db.scalar(
+            select(UsuarioORM).where(UsuarioORM.email == legacy_email)
+        )
+        if usuario is not None:
+            usuario.email = email
 
     if usuario is None:
         usuario = UsuarioORM(
@@ -154,16 +161,18 @@ def seed_data(db: Session) -> dict[str, int]:
             _ensure_usuario(
                 db,
                 "Administrador Demo",
-                "admin.demo@example.test",
+                "admin.demo@example.com",
                 "AdminDemo2026!",
                 "admin",
+                legacy_email="admin.demo@example.test",
             ),
             _ensure_usuario(
                 db,
                 "Cliente Demo",
-                "cliente.demo@example.test",
+                "cliente.demo@example.com",
                 "ClienteDemo2026!",
                 "cliente",
+                legacy_email="cliente.demo@example.test",
             ),
         ]
 

@@ -1,0 +1,87 @@
+........................................................................ [ 67%]
+...................................                                      [100%]
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.15-final-0 _______________
+
+Name                                                        Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------
+app\__init__.py                                                 0      0   100%
+app\application\__init__.py                                     0      0   100%
+app\application\puertos\__init__.py                             0      0   100%
+app\application\puertos\cita_repositorio.py                     4      0   100%
+app\application\puertos\cliente_repositorio.py                  3      0   100%
+app\application\puertos\profesional_repositorio.py              3      0   100%
+app\application\puertos\servicio_repositorio.py                 2      0   100%
+app\application\services\__init__.py                            0      0   100%
+app\application\services\auth_servicio.py                     110     10    91%   60, 113, 126, 134, 182-183, 196-197, 201, 214
+app\application\services\cita_servicio.py                      23      0   100%
+app\application\services\cliente_servicio.py                   23      1    96%   42
+app\application\services\profesional_servicio.py               57      2    96%   69, 129
+app\application\services\servicio_servicio.py                  28      1    96%   59
+app\domain\__init__.py                                          0      0   100%
+app\domain\entities\__init__.py                                 0      0   100%
+app\domain\entities\cita.py                                    12      0   100%
+app\domain\entities\cliente.py                                  8      0   100%
+app\domain\entities\detalle_cita.py                            13      0   100%
+app\domain\entities\profesional.py                              9      0   100%
+app\domain\entities\servicio.py                                10      0   100%
+app\domain\models.py                                           13      0   100%
+app\domain\rules\__init__.py                                    0      0   100%
+app\domain\rules\politica_contrasena.py                         4      0   100%
+app\infrastructure\__init__.py                                  0      0   100%
+app\infrastructure\database.py                                 22      1    95%   18
+app\infrastructure\mappers\__init__.py                          0      0   100%
+app\infrastructure\mappers\cita_mapper.py                       7      0   100%
+app\infrastructure\mappers\cliente_mapper.py                   12      4    67%   20-30
+app\infrastructure\mappers\profesional_mapper.py               12      4    67%   21-32
+app\infrastructure\mappers\servicio_mapper.py                  12      4    67%   21-32
+app\infrastructure\models\__init__.py                          11      0   100%
+app\infrastructure\models\cita.py                              13      0   100%
+app\infrastructure\models\cliente.py                           11      0   100%
+app\infrastructure\models\detalle_reserva.py                   16      0   100%
+app\infrastructure\models\profesional.py                       12      0   100%
+app\infrastructure\models\profesional_servicio.py              12      0   100%
+app\infrastructure\models\refresh_token.py                     14      0   100%
+app\infrastructure\models\reserva.py                           13      0   100%
+app\infrastructure\models\servicio.py                          14      0   100%
+app\infrastructure\models\token_recuperacion.py                10      0   100%
+app\infrastructure\models\usuario.py                           16      0   100%
+app\infrastructure\recovery_mail.py                            25      2    92%   35-36
+app\infrastructure\repositories\__init__.py                     0      0   100%
+app\infrastructure\repositories\cita_repository.py            168     16    90%   144-147, 155-158, 353, 359, 364, 430, 442, 479-482, 490, 501-504
+app\infrastructure\repositories\cliente_repository.py          52      2    96%   64, 83
+app\infrastructure\repositories\profesional_repository.py      81      7    91%   38, 87, 113, 125, 173-175
+app\infrastructure\repositories\servicio_repository.py         66     10    85%   57, 93-95, 101, 112-114, 120, 129
+app\infrastructure\repositories\usuario_repository.py          57      1    98%   112
+app\infrastructure\security.py                                 47      0   100%
+app\infrastructure\seeders\__init__.py                          0      0   100%
+app\main.py                                                    13      0   100%
+app\presentation\__init__.py                                    0      0   100%
+app\presentation\dependencies.py                               56      4    93%   101-102, 111, 120
+app\presentation\exception_handlers.py                         31      4    87%   13, 29, 31, 62
+app\presentation\mappers\cita_response_mapper.py                5      0   100%
+app\presentation\routers\__init__.py                            0      0   100%
+app\presentation\routers\auth.py                               42      2    95%   39-40
+app\presentation\routers\citas.py                              50      4    92%   37, 132, 173-174
+app\presentation\routers\clientes.py                           41      4    90%   112, 115-116, 139
+app\presentation\routers\profesionales.py                      63      0   100%
+app\presentation\routers\servicios.py                          47      7    85%   51, 85-86, 134-137
+app\presentation\schemas\__init__.py                            0      0   100%
+app\presentation\schemas\dtos\__init__.py                       0      0   100%
+app\presentation\schemas\dtos\auth_dto.py                      32      0   100%
+app\presentation\schemas\dtos\cita_dto.py                      50      1    98%   42
+app\presentation\schemas\dtos\cliente_dto.py                   25      0   100%
+app\presentation\schemas\dtos\profesional_dto.py               22      0   100%
+app\presentation\schemas\dtos\respuesta_paginada.py             9      0   100%
+app\presentation\schemas\dtos\servicio_dto.py                  21      0   100%
+app\repositories\__init__.py                                    0      0   100%
+app\repositories\database.py                                    4      4     0%   1-9
+app\routers\__init__.py                                         0      0   100%
+app\schemas\__init__.py                                         0      0   100%
+app\schemas\schemas.py                                        112    112     0%   1-269
+app\services\__init__.py                                        0      0   100%
+-----------------------------------------------------------------------------------------
+TOTAL                                                        1648    207    87%
+Coverage XML written to file docs/evidencias/2026-11-25/coverage.xml
+Required test coverage of 85% reached. Total coverage: 87.44%
+107 passed in 35.23s

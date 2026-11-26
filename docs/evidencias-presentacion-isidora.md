@@ -1,5 +1,7 @@
 # Evidencias para la presentación — Isidora
 
+> Evidencia histórica de la primera suite de 43 pruebas aprobadas y una omitida. Para preparar la demostración actual usa el [informe de validación](informe-validacion.md), las [capturas del 24 de noviembre de 2026](evidencias/2026-11-24/README.md) y la [matriz de la rúbrica](matriz-evidencias-rubrica.md).
+
 ## Qué desarrollé
 
 Preparé fixtures de prueba con SQLite en memoria, casos automatizados para clientes, servicios, citas, agenda y seeder, y documentación para reproducirlos. En esta actualización añadí una prueba del contrato OpenAPI y descripciones de respuestas de error que faltaban para que aparezcan en Swagger.

@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import create_autospec
+from unittest.mock import create_autospec, patch
 
 import pytest
 
+from app.application.services import auth_servicio
 from app.application.services.auth_servicio import AuthError, AuthServicio
 from app.infrastructure.models.usuario import UsuarioORM
 from app.infrastructure.repositories.usuario_repository import UsuarioRepository
@@ -92,6 +93,71 @@ def test_login_temporarily_locked_user_cannot_get_tokens(repo, usuario):
         AuthServicio(repo).iniciar_sesion(usuario.email, "Clave larga inicial")
 
     assert error.value.status_code == 429
+    repo.guardar_refresh_token.assert_not_called()
+
+
+def test_fifth_failed_login_locks_for_fifteen_minutes_and_rejects_correct_password(
+    repo, usuario
+):
+    instant = datetime(2026, 11, 25, 12, 0, tzinfo=timezone.utc)
+    repo.obtener_por_email.return_value = usuario
+    auth = AuthServicio(repo)
+
+    with patch.object(auth_servicio, "datetime", wraps=datetime) as clock:
+        clock.now.return_value = instant
+        for attempt in range(1, 6):
+            with pytest.raises(AuthError) as incorrect:
+                auth.iniciar_sesion(usuario.email, "Contraseña incorrecta")
+
+            assert incorrect.value.status_code == 401
+            assert usuario.intentos_fallidos == attempt
+            assert repo.actualizar_usuario.call_count == attempt
+            repo.actualizar_usuario.assert_called_with(usuario)
+            if attempt < 5:
+                assert usuario.bloqueado_hasta is None
+
+        assert usuario.bloqueado_hasta == instant + timedelta(minutes=15)
+        with pytest.raises(AuthError) as locked:
+            auth.iniciar_sesion(usuario.email, "Clave larga inicial")
+
+    assert locked.value.status_code == 429
+    assert usuario.intentos_fallidos == 5
+    assert repo.actualizar_usuario.call_count == 5
+    repo.guardar_refresh_token.assert_not_called()
+
+
+def test_successful_login_after_expired_lock_clears_lock_and_failed_attempts(
+    repo, usuario
+):
+    instant = datetime(2026, 11, 25, 12, 0, tzinfo=timezone.utc)
+    usuario.intentos_fallidos = 5
+    usuario.bloqueado_hasta = instant - timedelta(seconds=1)
+    repo.obtener_por_email.return_value = usuario
+
+    with patch.object(auth_servicio, "datetime", wraps=datetime) as clock:
+        clock.now.return_value = instant
+        tokens = AuthServicio(repo).iniciar_sesion(usuario.email, "Clave larga inicial")
+
+    assert tokens["usuario"] is usuario
+    assert tokens["access_token"] and tokens["refresh_token"]
+    assert usuario.intentos_fallidos == 0
+    assert usuario.bloqueado_hasta is None
+    repo.actualizar_usuario.assert_called_once_with(usuario)
+    repo.guardar_refresh_token.assert_called_once()
+
+
+def test_inactive_user_cannot_login_even_with_correct_password(repo, usuario):
+    instant = datetime(2026, 11, 25, 12, 0, tzinfo=timezone.utc)
+    usuario.activo = False
+    repo.obtener_por_email.return_value = usuario
+
+    with patch.object(auth_servicio, "datetime", wraps=datetime) as clock:
+        clock.now.return_value = instant
+        with pytest.raises(AuthError) as error:
+            AuthServicio(repo).iniciar_sesion(usuario.email, "Clave larga inicial")
+
+    assert error.value.status_code == 401
+    repo.actualizar_usuario.assert_called_once_with(usuario)
     repo.guardar_refresh_token.assert_not_called()
 
 

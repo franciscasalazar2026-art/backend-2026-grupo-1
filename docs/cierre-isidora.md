@@ -1,6 +1,6 @@
 # Cierre de la parte de Isidora Valverde
 
-Revisión del 25 de noviembre de 2026 de la sección 3 de *Plan de trabajo Backend.pdf*, contrastada con 5.5–5.7 y las condiciones colaborativas de *Proyecto_Backend_Entrega_Final.docx (1).pdf*. La revisión corresponde a calidad, pruebas y documentación. Los documentos aportan los criterios; el estado se determina con el código y las comprobaciones ejecutadas.
+Revisión del 25 de noviembre de 2026, actualizada con evidencias operacionales del 26, de la sección 3 de *Plan de trabajo Backend.pdf*, contrastada con 5.5–5.7 y las condiciones colaborativas de *Proyecto_Backend_Entrega_Final.docx (1).pdf*. La revisión corresponde a calidad, pruebas y documentación. Los documentos aportan los criterios; el estado se determina con el código y las comprobaciones ejecutadas.
 
 ## Requisitos asignados y resultado
 
@@ -13,6 +13,7 @@ Revisión del 25 de noviembre de 2026 de la sección 3 de *Plan de trabajo Backe
 | Cobertura mínima del 85% | 87,44% de líneas de `app`, incluyendo el subproceso HTTP; 107 aprobadas en total y cero omisiones o advertencias. | [Reportes del 25 de noviembre](evidencias/2026-11-25/README.md). |
 | Consolidar retroalimentación | Tabla con ID, procedencia, cambio, archivo/commit, comprobación y estado. Los hallazgos propios se distinguen de comentarios docentes. | [Registro R-01 y T-01–T-13](retroalimentacion.md). |
 | README y guía de pruebas | Preparación desde cero, comandos por nivel y conjunto, flujo JWT, recuperación, cuentas demo funcionales y OpenAPI. | [README](../README.md), [pruebas.md](../pruebas.md). |
+| Capturas y operación local | Swagger y salud 200, tres contenedores activos, once tablas PostgreSQL y datos conservados al recrear solo la API. | [Capturas y registro del 26 de noviembre](evidencias/2026-11-26/README.md). |
 
 El registro público mantiene el rol cliente aunque se solicite admin. Como esa cuenta no debe crear clientes, el escenario adicional prepara el recurso por HTTP con personal autorizado y comprueba su consulta autenticada, el rechazo de escritura, logout y renovación rechazada. El E2E original conserva creación y consulta con personal preparado en la base aislada, permitido por 5.7.
 
@@ -30,9 +31,10 @@ La identidad Git es **Isidora Valverde**. Después de `303e039`, esta ampliació
 | `5c0b1f3` | Login real de cuentas demo y documentación de su preparación. |
 | `8f5bf94` | Destino PostgreSQL local explícito para el proceso E2E. |
 | `256c6bb` | Actualización del correo demo antiguo conservando la cuenta y pruebas de colisiones. |
-| Commit de este informe | Consolidación de la ejecución completa, la lista de cierre y la matriz actualizada. |
+| `4e7d73c` | Consolidación de la ejecución completa, la lista de cierre y la matriz actualizada. |
+| Commit de las capturas del 26 | Capturas actuales de Swagger, Docker y PostgreSQL, registro de persistencia y configuración reproducible sin secretos. |
 
-La integración mediante PR hacia `main` todavía debe revisarse y completarse con el equipo. El número de commits en una rama no acredita por sí solo esa integración ni los aportes de las demás integrantes.
+El [PR 26](https://github.com/franciscasalazar2026-art/backend-2026-grupo-1/pull/26) concentra estos aportes hacia `main`; su estado en GitHub acredita la integración cuando figure como fusionado. El número de commits en una rama no acredita por sí solo los aportes de las demás integrantes.
 
 ## Preparar la explicación de las pruebas
 
@@ -48,7 +50,7 @@ Estos pasos son material de preparación. La presentación sorteada, el tiempo d
 
 | Pendiente | Área del plan / alcance |
 | --- | --- |
-| Integrar el PR, comprobar los cinco aportes de cada integrante y crear `v1.0` en el commit final integrado | Todas y coordinación. No se etiqueta una versión final mientras el cierre del equipo siga pendiente. |
+| Comprobar la integración de todos los PR, los cinco aportes de cada integrante y crear `v1.0` en el commit final integrado | Todas y coordinación. El PR individual está enlazado arriba; no se etiqueta una versión final mientras el cierre del equipo siga pendiente. |
 | Adjuntar observaciones originales de I/II y relacionarlas con los cambios | Coordinación y responsables de cada observación. El registro distingue lo que sí se pudo reproducir. |
 | Proteger operaciones privadas y administrativas de citas y profesionales | Francisca Alvarado. La matriz conserva el hallazgo; los tests nuevos no sustituyen esa implementación. |
 | Compose principal con visor y variables; pipeline, fallo bloqueado, imagen y Kubero con HTTPS | Francisca Salazar. Los reportes locales no acreditan CI ni despliegue institucional. |

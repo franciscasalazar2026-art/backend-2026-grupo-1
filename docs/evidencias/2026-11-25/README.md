@@ -37,4 +37,6 @@ Los resultados de [24 de noviembre](../2026-11-24/README.md) son históricos: 96
 
 La captura de Docker Desktop sigue pendiente: el intento del 25 encontró Windows bloqueado. Se restauró el stack complementario anterior, con su imagen `a931df8`; su estado no acredita un nuevo despliegue de `256c6bb`.
 
+**Actualización del 26 de noviembre:** la [comprobación Docker y sus capturas](../2026-11-26/README.md) resuelven esa captura pendiente y acreditan la operación complementaria de `256c6bb`, con la misma revisión del código de esta suite. Este informe conserva el entorno y los resultados originales del 25.
+
 La [lista de cierre de Isidora](../../cierre-isidora.md), la [retroalimentación](../../retroalimentacion.md) y la [matriz de la rúbrica](../../matriz-evidencias-rubrica.md) conectan los resultados con cada requisito y sus límites.

@@ -28,6 +28,7 @@ API REST con FastAPI y SQLAlchemy para administrar clientes, servicios, profesio
 - El modelo conceptual y relacional se describe en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md).
 - La revisión de imports, módulos legados y mappers está en [`docs/revision-arquitectura.md`](docs/revision-arquitectura.md).
 - La comprobación del plan asignado a Isidora está en [`docs/cierre-isidora.md`](docs/cierre-isidora.md), con [107 pruebas aprobadas y 87,44% de cobertura](docs/evidencias/2026-11-25/README.md) en la revisión del 25 de noviembre.
+- Las [capturas y comprobación Docker del 26 de noviembre](docs/evidencias/2026-11-26/README.md) muestran Swagger, salud, contenedores, PostgreSQL y persistencia de esa misma revisión en un entorno complementario.
 
 ## Requisitos
 
@@ -111,7 +112,7 @@ if (-not $env:TEST_POSTGRES_URL) { throw 'Configura TEST_POSTGRES_URL según pru
 
 La preparación de PostgreSQL, los casos por nivel y el resultado medido están en [`pruebas.md`](pruebas.md). La tabla de hallazgos y comprobaciones está en [`docs/retroalimentacion.md`](docs/retroalimentacion.md).
 
-La consolidación de las tareas 3 y 4 está en el [informe de validación](docs/informe-validacion.md), con [evidencias de ejecución y estado de las capturas](docs/evidencias/2026-11-24/README.md) y una [matriz de los criterios de la rúbrica](docs/matriz-evidencias-rubrica.md). Para arranques E2E lentos puede definirse `E2E_STARTUP_TIMEOUT` en segundos. El valor predeterminado es 60 y admite valores mayores que cero y hasta 300.
+La consolidación de las tareas 3 y 4 está en el [informe de validación histórico](docs/informe-validacion.md), los [resultados actuales de pruebas](docs/evidencias/2026-11-25/README.md), las [capturas y operación Docker](docs/evidencias/2026-11-26/README.md) y la [matriz de los criterios de la rúbrica](docs/matriz-evidencias-rubrica.md). Para arranques E2E lentos puede definirse `E2E_STARTUP_TIMEOUT` en segundos. El valor predeterminado es 60 y admite valores mayores que cero y hasta 300.
 
 ## Endpoints registrados
 

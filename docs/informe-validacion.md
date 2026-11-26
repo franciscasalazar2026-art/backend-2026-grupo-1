@@ -1,5 +1,7 @@
 # Informe de arquitectura y validación de las tareas 3 y 4
 
+> Registro de la revisión del 24 de noviembre. La ampliación del 25, contrastada con el plan de Isidora, está en la [lista de cierre](cierre-isidora.md), con [107 aprobadas y 87,44% de cobertura](evidencias/2026-11-25/README.md). Los datos siguientes identifican su propia revisión histórica.
+
 **Responsable:** Isidora Valverde
 
 **Fecha:** 24 de noviembre de 2026

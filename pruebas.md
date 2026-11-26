@@ -35,7 +35,7 @@ Para ejecutar el conjunto y exigir 85% de cobertura de líneas de `app`:
 
 ```powershell
 if (-not $env:TEST_POSTGRES_URL) { throw 'Configura la base PostgreSQL de pruebas' }
-& $backendPython -m pytest -q --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=85 --junitxml=pytest-result.xml
+& $backendPython -m pytest -q -W error --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=85 --junitxml=pytest-result.xml
 ```
 
 El informe `coverage.xml` registra la cobertura por archivo. `pytest-result.xml` registra resultados por caso. Se incluye el código que ejecuta el proceso HTTP de Uvicorn. Sin `TEST_POSTGRES_URL`, pytest omite los casos de PostgreSQL y E2E, de modo que ese resultado sirve como comprobación rápida.
@@ -47,8 +47,8 @@ El informe `coverage.xml` registra la cobertura por archivo. `pytest-result.xml`
 | Unitarias | Longitud de contraseña, hash, JWT firmado y expirado, propósito incorrecto, roles, intentos y buzón sin filtraciones en logs | [tests/unit](tests/unit) |
 | Regresión | CRUD autenticado de clientes y servicios, profesionales, DTO de citas de múltiples servicios, filtros y respuestas OpenAPI | [tests](tests) |
 | Integración | Migración limpia, unicidad de correo, relaciones, rollback de citas, refresh rotado y reutilizado, revocación y recuperación concurrente | [tests/integration](tests/integration) |
-| E2E acceso | Login, creación y consulta protegidas, rotación, logout y rechazo de renovación | [Escenarios HTTP](tests/e2e/test_auth_e2e.py) |
-| E2E recuperación | Respuesta genérica, recepción en buzón, firma alterada, expiración, propósito incorrecto, uso único, segundo enlace anterior, login con clave nueva e invalidación de access y refresh previos | [Escenarios HTTP](tests/e2e/test_auth_e2e.py) |
+| E2E acceso y registro | Registro público sin autoasignación de admin, login, creación por personal y consulta protegida, rotación, logout y rechazo de renovación | [Escenarios HTTP](tests/e2e/test_auth_e2e.py) |
+| E2E recuperación | Respuesta genérica, recepción en buzón, firma alterada, expiración, propósito incorrecto, uso único, segundo enlace anterior, dos sesiones previas invalidadas y otra cuenta preservada ante ID adicional | [Escenarios HTTP](tests/e2e/test_auth_e2e.py) |
 | E2E permisos | Misma escritura comprobada con `401` sin token, `403` con cliente y `201` con admin, seguida de lectura del registro | [Escenarios HTTP](tests/e2e/test_auth_e2e.py) |
 
 El resultado de 43 aprobadas y 1 omitida del [PR #17](https://github.com/franciscasalazar2026-art/backend-2026-grupo-1/pull/17) corresponde a la suite previa al JWT. En `0032403` se midieron 10 aprobadas, 33 fallos, 1 omisión y 49% de cobertura antes de los cambios.
@@ -57,14 +57,14 @@ El resultado de 43 aprobadas y 1 omitida del [PR #17](https://github.com/francis
 
 | Nivel | Aprobadas | Fallidas | Omitidas |
 | --- | ---: | ---: | ---: |
-| Unitarias | 21 | 0 | 0 |
-| Regresiones con SQLite | 61 | 0 | 0 |
-| Integración PostgreSQL | 11 | 0 | 0 |
-| E2E HTTP | 3 | 0 | 0 |
-| **Total** | **96** | **0** | **0** |
+| Unitarias | 24 | 0 | 0 |
+| Regresiones con SQLite | 65 | 0 | 0 |
+| Integración PostgreSQL | 14 | 0 | 0 |
+| E2E HTTP | 4 | 0 | 0 |
+| **Total** | **107** | **0** | **0** |
 
-La revisión del 24 de noviembre de 2026 pasó el umbral con **87,38% de cobertura de líneas en `app`** e incluyó el proceso Uvicorn de los escenarios E2E. Se ejecutó sobre `a931df8` con Python 3.13.15, PostgreSQL 18.6 y `-W error`, sin advertencias. La cifra de 88,26% indicada como antecedente en la tarea no se reprodujo con este commit y entorno.
+La revisión del 25 de noviembre de 2026 pasó el umbral con **87,44% de cobertura de líneas en `app`** e incluyó el proceso Uvicorn de los cuatro E2E. Se ejecutó sobre `256c6bb` con Python 3.13.15, PostgreSQL 18.6 y `-W error`, sin advertencias, fallos, errores u omisiones. Terminó en 35,23 segundos. Se ejecutaron 1441 de 1648 líneas y se conservaron en el cálculo los módulos legados con 0%.
 
-Los [reportes de pytest, JUnit, cobertura y resumen](docs/evidencias/2026-11-24/README.md) permiten comprobar los conteos. El [informe de validación](docs/informe-validacion.md) registra las cinco advertencias de Starlette corregidas, los primeros errores de preparación E2E y el ajuste de plazo de arranque. Para equipos con arranque lento se puede definir `$env:E2E_STARTUP_TIMEOUT = '300'` antes del comando completo.
+Los [reportes actuales de pytest, JUnit, cobertura y resumen](docs/evidencias/2026-11-25/README.md) permiten comprobar los conteos. La [lista de cierre de Isidora](docs/cierre-isidora.md) vincula cada tarea del plan con su evidencia. La [ejecución del 24 de noviembre](docs/evidencias/2026-11-24/README.md) conserva el resultado histórico de 96 pruebas y 87,38%; el 88,26% anterior sigue sin reproducirse. El [informe de arquitectura y validación](docs/informe-validacion.md) documenta las advertencias de Starlette y la incidencia de arranque. Para equipos lentos se puede definir `$env:E2E_STARTUP_TIMEOUT = '300'`.
 
 El resultado corresponde al conjunto de pruebas de esta rama. La [comprobación Docker complementaria](docs/evidencias/2026-11-24/docker-operacion.json) también verificó persistencia al recrear solo la API. La ejecución del pipeline y la operación en Kubero permanecen pendientes.

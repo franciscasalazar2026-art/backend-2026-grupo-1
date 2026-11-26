@@ -27,6 +27,7 @@ API REST con FastAPI y SQLAlchemy para administrar clientes, servicios, profesio
 - `tests/` incluye unitarias, regresiones con SQLite, integración PostgreSQL y E2E por HTTP.
 - El modelo conceptual y relacional se describe en [`docs/diagrama-entidades.md`](docs/diagrama-entidades.md).
 - La revisión de imports, módulos legados y mappers está en [`docs/revision-arquitectura.md`](docs/revision-arquitectura.md).
+- La comprobación del plan asignado a Isidora está en [`docs/cierre-isidora.md`](docs/cierre-isidora.md), con [107 pruebas aprobadas y 87,44% de cobertura](docs/evidencias/2026-11-25/README.md) en la revisión del 25 de noviembre.
 
 ## Requisitos
 

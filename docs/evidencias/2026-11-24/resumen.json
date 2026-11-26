@@ -42,8 +42,8 @@
     "E2E_STARTUP_TIMEOUT_segundos": 300
   },
   "sha256": {
-    "junit.xml": "f3341e846b1092ffb4063dea2a5dab92e600fe9046860589a3b10872e6c7d481",
-    "coverage.xml": "d1a41c6fc2953c0d34e38ccc3dc584e3a517a176a84ad10e2e96bd403db545f7",
-    "pytest.txt": "c3c78372f11a849c7e5585d5aff9542b7f318a106ed9c2017a7135a3fdb6756f"
+    "junit.xml": "0115c52cd4d2cb2b7452376e4610610dac21a66214de875f33f30b9c8ff26277",
+    "coverage.xml": "4a1e7caf71175df8ee2f46e8065b06252130602762261519f277acc56583a247",
+    "pytest.txt": "de7c216882c7d9fcaabc80d3345eedca8df5ba39238a5bc0c7998b3569782458"
   }
 }

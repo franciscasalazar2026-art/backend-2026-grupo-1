@@ -1,0 +1,49 @@
+{
+  "fecha": "2026-11-25",
+  "base_main": "14b9af706c7fd760816a77fb5c075a70b7ef4ee3",
+  "revision_validada": "256c6bbc7f91be5d34cfe6793cfc4f7311c4a242",
+  "timestamp_pytest": "2026-11-25T10:07:37.028490-03:00",
+  "pruebas": {
+    "total": 107,
+    "aprobadas_por_nivel": {
+      "unitarias": 24,
+      "regresion_sqlite": 65,
+      "integracion_postgresql": 14,
+      "e2e_http": 4
+    },
+    "fallidas": 0,
+    "errores": 0,
+    "omitidas": 0,
+    "advertencias": 0
+  },
+  "cobertura_app": {
+    "lineas_ejecutables": 1648,
+    "lineas_ejecutadas": 1441,
+    "porcentaje": 87.44,
+    "incluye_subproceso_http": true,
+    "umbral_porcentaje": 85
+  },
+  "entorno": {
+    "python": "3.13.15",
+    "plataforma": "Windows",
+    "postgresql_tests": "18.6",
+    "dependencias": {
+      "fastapi": "0.163.1",
+      "starlette": "1.10.0",
+      "pydantic": "2.14.3",
+      "SQLAlchemy": "2.1.9",
+      "pytest": "9.2.0",
+      "pytest-cov": "7.1.0",
+      "coverage": "7.17.3"
+    }
+  },
+  "opciones": {
+    "warnings": "error",
+    "E2E_STARTUP_TIMEOUT_segundos": 300
+  },
+  "sha256": {
+    "junit.xml": "eb3e97eedc90b3b34fad1fc159aa9ca364cd69f84b859f5aaf261dbe2c6504b7",
+    "coverage.xml": "3461bca1822b3604bc181a341de86874fbb8cd925e575c69444ee8d261a10bf8",
+    "pytest.txt": "7fd7d64127acf48dc292f8fdfabc4a4755709c7dc6182e3d75e492642c47545e"
+  }
+}

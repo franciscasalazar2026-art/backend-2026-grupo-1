@@ -23,6 +23,8 @@ La batería completa terminó con **96 pruebas aprobadas**, cero fallos, cero er
 
 Este conjunto se ejecutó en Windows con Python 3.13.15 y PostgreSQL 18.6 nativo local. Las pruebas de PostgreSQL y E2E preparan esquemas aislados mediante Alembic y los eliminan al finalizar. La cifra de 88,26% indicada como antecedente requiere el reporte y el commit de aquella medición para reproducirla.
 
+El 25 de noviembre se normalizaron los saltos de línea de estos reportes a LF y se recalcularon sus huellas SHA-256 para que coincidan con los archivos publicados en Git. Se conserva la ejecución histórica y sus resultados.
+
 Para repetirlo, configurar `TEST_POSTGRES_URL` hacia una base PostgreSQL local exclusiva de pruebas siguiendo [pruebas.md](../../../pruebas.md) y ejecutar desde la raíz del repositorio.
 
 ```powershell

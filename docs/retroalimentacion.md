@@ -20,3 +20,5 @@ Las filas T-01 a T-06 corresponden al diagnóstico reproducido sobre `0032403`. 
 | T-13. El proceso HTTP E2E heredaba `PGHOSTADDR`, que podía alterar el destino validado de la base | [Fixture E2E](../tests/e2e/conftest.py), commit `8f5bf94`, fija el mismo destino loopback que la fixture PostgreSQL. | Los cuatro E2E pasaron con `PGHOSTADDR=127.0.0.2` en el entorno padre y la base validada en `127.0.0.1`. **Verificado sin conexiones fuera de loopback**. |
 
 El buzón está pensado para cuentas ficticias y para ejecución local. En el despliegue queda pendiente conectar el canal de entrega de recuperación y verificar CI y Kubero.
+
+La [validación consolidada del 25 de noviembre](evidencias/2026-11-25/README.md) ejecutó 107 casos sin fallos, errores, omisiones o advertencias, con 87,44% de cobertura en `256c6bb`. La [lista de cierre de Isidora](cierre-isidora.md) relaciona esta ampliación con el plan y los commits nuevos.
